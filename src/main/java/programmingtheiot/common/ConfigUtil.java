@@ -29,6 +29,7 @@ import org.apache.commons.configuration2.ex.ConfigurationException;
  * configuration infrastructure.
  * 
  */
+@SuppressWarnings("unused")
 public class ConfigUtil
 {
 	// static
