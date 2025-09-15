@@ -179,7 +179,8 @@ public class GatewayDeviceApp
 			_Logger.log(Level.SEVERE, "Failed to cleanly stop GDA. Exiting.", e);
 		}
 		
-		System.exit(code);
+		// FIXME: this is causing issues with unit tests, commented it out for now
+		// System.exit(code);
 	}
 	
 	

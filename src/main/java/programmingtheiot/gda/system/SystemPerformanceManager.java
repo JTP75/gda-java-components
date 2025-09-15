@@ -35,6 +35,11 @@ public class SystemPerformanceManager
 	// private var's
 	private static final Logger _Logger = Logger.getLogger(SystemPerformanceManager.class.getName());
 	private int pollRate = ConfigConst.DEFAULT_POLL_CYCLES;
+	private ScheduledExecutorService scheduledExecutorService = null;
+	private SystemCpuUtilTask cpuUtilTask = null;
+	private SystemMemUtilTask memUtilTask = null;
+	private Runnable taskRunner = null;
+	private boolean isStarted = false;
 
 	// constructors
 	
@@ -53,6 +58,14 @@ public class SystemPerformanceManager
 		if (this.pollRate <= 0) {
 			this.pollRate = ConfigConst.DEFAULT_POLL_CYCLES;
 		}
+
+		this.scheduledExecutorService = Executors.newScheduledThreadPool(1);
+		this.cpuUtilTask = new SystemCpuUtilTask();
+		this.memUtilTask = new SystemMemUtilTask();
+
+		this.taskRunner = () -> {
+			handleTelemetry();
+		};
 	}
 	
 	
@@ -60,6 +73,10 @@ public class SystemPerformanceManager
 	
 	public void handleTelemetry()
 	{
+		float cpuUtil = this.cpuUtilTask.getTelemetryValue();
+		float memUtil = this.memUtilTask.getTelemetryValue();
+
+		_Logger.info("CPU Util: " + cpuUtil + "; Mem Util: " + memUtil);
 	}
 	
 	public void setDataMessageListener(IDataMessageListener listener)
@@ -68,12 +85,29 @@ public class SystemPerformanceManager
 	
 	public void startManager()
 	{
-		_Logger.info("SystemPerformanceManager is starting...");
+		if (!this.isStarted) {
+			_Logger.info("SystemPerformanceManager is starting...");
+
+			ScheduledFuture<?> futureTask = this.scheduledExecutorService.scheduleAtFixedRate(
+				this.taskRunner, 
+				1L, 
+				this.pollRate, 
+				TimeUnit.SECONDS
+			);
+
+			this.isStarted = true;
+		} else {
+			_Logger.warning("SystemPerformanceManager is already started.");
+		}
+
 	}
 	
 	public void stopManager()
 	{
 		_Logger.info("SystemPerformanceManager is stopping...");
+
+		this.scheduledExecutorService.shutdown();
+		this.isStarted = false;
 	}
 	
 }
