@@ -11,22 +11,23 @@
 
 package programmingtheiot.data;
 
-import java.io.Serializable;
-
 import programmingtheiot.common.ConfigConst;
 
 /**
  * Shell representation of class for student implementation.
  *
  */
-public class ActuatorData extends BaseIotData implements Serializable
+public class ActuatorData extends BaseIotData
 {
 	// static
 	
 	
 	// private var's
 	
-    
+    private int command = ConfigConst.DEFAULT_COMMAND;
+	private float value = ConfigConst.DEFAULT_VAL;
+	private boolean isResponse = false;
+	private String stateData = "";
     
 	// constructors
 	
@@ -44,29 +45,41 @@ public class ActuatorData extends BaseIotData implements Serializable
 	
 	public int getCommand()
 	{
-		return 0;
+		return this.command;
 	}
 	
 	public float getValue()
 	{
-		return 0.0f;
+		return this.value;
 	}
 	
 	public boolean isResponseFlagEnabled()
 	{
-		return false;
+		return this.isResponse;
 	}
 	
 	public void setAsResponse()
 	{
+		updateTimeStamp();
+		this.isResponse = true;
 	}
 	
 	public void setCommand(int command)
 	{
+		updateTimeStamp();
+		this.command = command;
 	}
 	
 	public void setValue(float val)
 	{
+		updateTimeStamp();
+		this.value = val;
+	}
+
+	public void setStateData(String stateData)
+	{
+		updateTimeStamp();
+		if (stateData != null) { this.stateData = stateData; }
 	}
 	
 	/**
@@ -95,6 +108,13 @@ public class ActuatorData extends BaseIotData implements Serializable
 	 */
 	protected void handleUpdateData(BaseIotData data)
 	{
+		if (data instanceof ActuatorData) {
+			ActuatorData actuatorData = (ActuatorData)data;
+			this.setCommand(actuatorData.getCommand());
+			this.setValue(actuatorData.getValue());
+			this.setStateData(actuatorData.stateData);
+			if (actuatorData.isResponseFlagEnabled()) { this.setAsResponse(); }
+		}
 	}
 	
 }

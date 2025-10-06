@@ -11,8 +11,6 @@
 
 package programmingtheiot.data;
 
-import java.io.Serializable;
-import java.util.ArrayList;
 import java.util.List;
 
 import programmingtheiot.common.ConfigConst;
@@ -25,7 +23,7 @@ import programmingtheiot.common.ConfigConst;
  * <p>SensorData
  * 
  */
-public class SystemStateData extends BaseIotData implements Serializable
+public class SystemStateData extends BaseIotData
 {
 	// static
 	

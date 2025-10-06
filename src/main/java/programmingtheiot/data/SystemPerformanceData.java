@@ -11,27 +11,30 @@
 
 package programmingtheiot.data;
 
-import java.io.Serializable;
-
 import programmingtheiot.common.ConfigConst;
 
 /**
  * Shell representation of class for student implementation.
  *
  */
-public class SystemPerformanceData extends BaseIotData implements Serializable
+public class SystemPerformanceData extends BaseIotData
 {
 	// static
 	
 	
 	// private var's
-	
+
+	private float cpuUtilization = ConfigConst.DEFAULT_VAL;
+	private float diskUtilization = ConfigConst.DEFAULT_VAL;
+	private float memUtilization = ConfigConst.DEFAULT_VAL;
     
 	// constructors
 	
 	public SystemPerformanceData()
 	{
 		super();
+
+		super.setName(ConfigConst.SYS_PERF_DATA);
 	}
 	
 	
@@ -39,29 +42,32 @@ public class SystemPerformanceData extends BaseIotData implements Serializable
 	
 	public float getCpuUtilization()
 	{
-		return 0.0f;
+		return this.cpuUtilization;
 	}
 	
 	public float getDiskUtilization()
 	{
-		return 0.0f;
+		return this.diskUtilization;
 	}
 	
 	public float getMemoryUtilization()
 	{
-		return 0.0f;
+		return this.memUtilization;
 	}
 	
 	public void setCpuUtilization(float val)
 	{
+		this.cpuUtilization = val;
 	}
 	
 	public void setDiskUtilization(float val)
 	{
+		this.diskUtilization = val;
 	}
 	
 	public void setMemoryUtilization(float val)
 	{
+		this.memUtilization = val;
 	}
 	
 	/**
@@ -90,6 +96,12 @@ public class SystemPerformanceData extends BaseIotData implements Serializable
 	 */
 	protected void handleUpdateData(BaseIotData data)
 	{
+		if (data instanceof SystemPerformanceData) {
+			SystemPerformanceData systemPerformanceData = (SystemPerformanceData)data;
+			this.setCpuUtilization(systemPerformanceData.getCpuUtilization());
+			this.setDiskUtilization(systemPerformanceData.getDiskUtilization());
+			this.setMemoryUtilization(systemPerformanceData.getMemoryUtilization());
+		}
 	}
 	
 }
