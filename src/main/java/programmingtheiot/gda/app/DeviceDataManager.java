@@ -33,6 +33,7 @@ import programmingtheiot.gda.connection.IRequestResponseClient;
 import programmingtheiot.gda.connection.MqttClientConnector;
 import programmingtheiot.gda.connection.RedisPersistenceAdapter;
 import programmingtheiot.gda.connection.SmtpClientConnector;
+import programmingtheiot.gda.system.SystemPerformanceManager;
 
 /**
  * Shell representation of class for student implementation.
@@ -52,6 +53,7 @@ public class DeviceDataManager implements IDataMessageListener
 	private boolean enableCloudClient = false;
 	private boolean enableSmtpClient = false;
 	private boolean enablePersistenceClient = false;
+	private boolean enableSystemPerf = false;
 	
 	private IActuatorDataListener actuatorDataListener = null;
 	private IPubSubClient mqttClient = null;
@@ -59,12 +61,46 @@ public class DeviceDataManager implements IDataMessageListener
 	private IPersistenceClient persistenceClient = null;
 	private IRequestResponseClient smtpClient = null;
 	private CoapServerGateway coapServer = null;
+	private SystemPerformanceManager systemPerfMgr = null;
 	
 	// constructors
 	
 	public DeviceDataManager()
 	{
 		super();
+	
+		ConfigUtil configUtil = ConfigUtil.getInstance();
+		
+		this.enableMqttClient = configUtil.getBoolean(
+			ConfigConst.GATEWAY_DEVICE, 
+			ConfigConst.ENABLE_MQTT_CLIENT_KEY
+		);
+		
+		this.enableCoapServer = configUtil.getBoolean(
+			ConfigConst.GATEWAY_DEVICE, 
+			ConfigConst.ENABLE_COAP_SERVER_KEY
+		);
+		
+		this.enableCloudClient = configUtil.getBoolean(
+			ConfigConst.GATEWAY_DEVICE, 
+			ConfigConst.ENABLE_CLOUD_CLIENT_KEY
+		);
+		
+		this.enablePersistenceClient = configUtil.getBoolean(
+			ConfigConst.GATEWAY_DEVICE, 
+			ConfigConst.ENABLE_PERSISTENCE_CLIENT_KEY
+		);
+
+		this.enableSystemPerf = configUtil.getBoolean(
+			ConfigConst.GATEWAY_DEVICE, 
+			ConfigConst.ENABLE_SYSTEM_PERF_KEY
+		);
+
+		if (this.enableSystemPerf) {
+			this.systemPerfMgr = new SystemPerformanceManager();
+			this.systemPerfMgr.setDataMessageListener(this);
+			_Logger.info("System Performance Management Enabled");
+		}
 		
 		initConnections();
 	}
@@ -77,7 +113,7 @@ public class DeviceDataManager implements IDataMessageListener
 		boolean enablePersistenceClient)
 	{
 		super();
-		
+
 		initConnections();
 	}
 	
@@ -87,6 +123,11 @@ public class DeviceDataManager implements IDataMessageListener
 	@Override
 	public boolean handleActuatorCommandResponse(ResourceNameEnum resourceName, ActuatorData data)
 	{
+		if (data != null) {
+			_Logger.info("Handling Actuator Command Response: " + data.getName());
+			if (data.hasError()) { _Logger.warning("Error in Actuator Data"); }
+			return true;
+		} 
 		return false;
 	}
 
@@ -99,18 +140,32 @@ public class DeviceDataManager implements IDataMessageListener
 	@Override
 	public boolean handleIncomingMessage(ResourceNameEnum resourceName, String msg)
 	{
+		if (msg != null) {
+			_Logger.info("Handling Generic Message: " + msg);
+			return true;
+		}
 		return false;
 	}
 
 	@Override
 	public boolean handleSensorMessage(ResourceNameEnum resourceName, SensorData data)
 	{
+		if (data != null) {
+			_Logger.info("Handling Sensor Message: " + data.getName());
+			if (data.hasError()) { _Logger.warning("Error in Sensor Data"); }
+			return true;
+		}
 		return false;
 	}
 
 	@Override
 	public boolean handleSystemPerformanceMessage(ResourceNameEnum resourceName, SystemPerformanceData data)
 	{
+		if (data != null) {
+			_Logger.info("Handling System Performance Message: " + data.getName());
+			if (data.hasError()) { _Logger.warning("Error in System Performance Data"); }
+			return true;
+		}
 		return false;
 	}
 	
@@ -120,10 +175,12 @@ public class DeviceDataManager implements IDataMessageListener
 	
 	public void startManager()
 	{
+		if (this.systemPerfMgr != null) { this.systemPerfMgr.startManager(); }
 	}
 	
 	public void stopManager()
 	{
+		if (this.systemPerfMgr != null) { this.systemPerfMgr.stopManager(); }
 	}
 
 	
