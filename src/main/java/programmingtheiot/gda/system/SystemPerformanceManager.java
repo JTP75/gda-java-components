@@ -11,7 +11,6 @@
 
 package programmingtheiot.gda.system;
 
-import java.io.ObjectInputFilter.Config;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
@@ -24,7 +23,6 @@ import programmingtheiot.common.ResourceNameEnum;
 import programmingtheiot.data.SystemPerformanceData;
 
 import java.util.logging.Logger;
-import java.util.logging.Level;
 
 /**
  * Shell representation of class for student implementation.
@@ -40,6 +38,8 @@ public class SystemPerformanceManager
 	private SystemMemUtilTask memUtilTask = null;
 	private Runnable taskRunner = null;
 	private boolean isStarted = false;
+	private String locationID = ConfigConst.NOT_SET;
+	private IDataMessageListener dataMessageListener = null;
 
 	// constructors
 	
@@ -54,10 +54,15 @@ public class SystemPerformanceManager
 			ConfigConst.POLL_CYCLES_KEY,
 			ConfigConst.DEFAULT_POLL_CYCLES
 		);
-
 		if (this.pollRate <= 0) {
 			this.pollRate = ConfigConst.DEFAULT_POLL_CYCLES;
 		}
+
+		this.locationID = ConfigUtil.getInstance().getProperty(
+			ConfigConst.GATEWAY_DEVICE, 
+			ConfigConst.LOCATION_ID_PROP, 
+			ConfigConst.NOT_SET
+		);
 
 		this.scheduledExecutorService = Executors.newScheduledThreadPool(1);
 		this.cpuUtilTask = new SystemCpuUtilTask();
@@ -77,10 +82,20 @@ public class SystemPerformanceManager
 		float memUtil = this.memUtilTask.getTelemetryValue();
 
 		_Logger.info("CPU Util: " + cpuUtil + "; Mem Util: " + memUtil);
+
+		SystemPerformanceData sysPerfData = new SystemPerformanceData();
+		sysPerfData.setLocationID(this.locationID);
+		sysPerfData.setCpuUtilization(cpuUtil);
+		sysPerfData.setMemoryUtilization(memUtil);
+
+		if (this.dataMessageListener != null) {
+			this.dataMessageListener.handleSystemPerformanceMessage(ResourceNameEnum.GDA_SYSTEM_PERF_MSG_RESOURCE, sysPerfData);
+		}
 	}
 	
 	public void setDataMessageListener(IDataMessageListener listener)
 	{
+		if (listener != null) { this.dataMessageListener = listener; }
 	}
 	
 	public void startManager()
@@ -88,6 +103,7 @@ public class SystemPerformanceManager
 		if (!this.isStarted) {
 			_Logger.info("SystemPerformanceManager is starting...");
 
+			@SuppressWarnings("unused")
 			ScheduledFuture<?> futureTask = this.scheduledExecutorService.scheduleAtFixedRate(
 				this.taskRunner, 
 				1L, 

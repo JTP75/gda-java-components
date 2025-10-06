@@ -11,8 +11,6 @@
 
 package programmingtheiot.gda.system;
 
-import java.util.logging.Logger;
-
 import programmingtheiot.common.ConfigConst;
 
 /**
@@ -21,9 +19,6 @@ import programmingtheiot.common.ConfigConst;
 public abstract class BaseSystemUtilTask
 {
 	// static
-	
-	private static final Logger _Logger =
-		Logger.getLogger(BaseSystemUtilTask.class.getName());
 	
 	
 	// private
