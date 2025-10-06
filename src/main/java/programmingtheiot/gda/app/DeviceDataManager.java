@@ -175,12 +175,16 @@ public class DeviceDataManager implements IDataMessageListener
 	
 	public void startManager()
 	{
+		_Logger.info("Starting DeviceDataManager...");
 		if (this.systemPerfMgr != null) { this.systemPerfMgr.startManager(); }
+		_Logger.info("DeviceDataManager started");
 	}
 	
 	public void stopManager()
 	{
+		_Logger.info("Stopping DeviceDataManager...");
 		if (this.systemPerfMgr != null) { this.systemPerfMgr.stopManager(); }
+		_Logger.info("DeviceDataManager stopped");
 	}
 
 	

@@ -38,7 +38,7 @@ public class GatewayDeviceApp
 	// private var's
 	
 	private String configFile = ConfigConst.DEFAULT_CONFIG_FILE_NAME;
-	private SystemPerformanceManager systemPerformanceManager = null;
+	private DeviceDataManager deviceDataManager = null;
 
 	// constructors
 	
@@ -53,7 +53,7 @@ public class GatewayDeviceApp
 		
 		_Logger.info("Initializing GDA...");
 
-		this.systemPerformanceManager = new SystemPerformanceManager();
+		this.deviceDataManager = new DeviceDataManager();
 	}
 	
 	
@@ -152,7 +152,7 @@ public class GatewayDeviceApp
 		_Logger.info("Starting GDA...");
 		
 		try {
-			this.systemPerformanceManager.startManager();
+			this.deviceDataManager.startManager();
 			
 			_Logger.info("GDA started successfully.");
 		} catch (Exception e) {
@@ -172,7 +172,7 @@ public class GatewayDeviceApp
 		_Logger.info("Stopping GDA...");
 		
 		try {
-			systemPerformanceManager.stopManager();
+			this.deviceDataManager.stopManager();
 			
 			_Logger.log(Level.INFO, "GDA stopped successfully with exit code {0}.", code);
 		} catch (Exception e) {

@@ -101,7 +101,7 @@ public class SystemPerformanceManager
 	public void startManager()
 	{
 		if (!this.isStarted) {
-			_Logger.info("SystemPerformanceManager is starting...");
+			_Logger.info("Starting SystemPerformanceManager...");
 
 			@SuppressWarnings("unused")
 			ScheduledFuture<?> futureTask = this.scheduledExecutorService.scheduleAtFixedRate(
@@ -112,6 +112,8 @@ public class SystemPerformanceManager
 			);
 
 			this.isStarted = true;
+
+			_Logger.info("SystemPerformanceManager started");
 		} else {
 			_Logger.warning("SystemPerformanceManager is already started.");
 		}
@@ -120,10 +122,12 @@ public class SystemPerformanceManager
 	
 	public void stopManager()
 	{
-		_Logger.info("SystemPerformanceManager is stopping...");
+		_Logger.info("Stopping SystemPerformanceManager...");
 
 		this.scheduledExecutorService.shutdown();
 		this.isStarted = false;
+
+		_Logger.info("SystemPerformanceManager stopped");
 	}
 	
 }
