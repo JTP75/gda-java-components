@@ -16,7 +16,9 @@ package programmingtheiot.data;
 // import java.nio.file.Path;
 // import java.util.List;
 
-// import com.google.gson.Gson;
+import com.google.gson.Gson;
+
+import kotlin.NotImplementedError;
 
 /**
  * Shell representation of class for student implementation.
@@ -40,7 +42,7 @@ public class DataUtil
 	
 	
 	// private var's
-	
+	private Gson gson = new Gson();
 	
 	// constructors
 	
@@ -50,6 +52,7 @@ public class DataUtil
 	 */
 	private DataUtil()
 	{
+		
 		super();
 	}
 	
@@ -58,42 +61,42 @@ public class DataUtil
 	
 	public String actuatorDataToJson(ActuatorData actuatorData)
 	{
-		return null;
+		return gson.toJson(actuatorData);
 	}
 	
 	public String sensorDataToJson(SensorData sensorData)
 	{
-		return null;
+		return gson.toJson(sensorData);
 	}
 	
 	public String systemPerformanceDataToJson(SystemPerformanceData sysPerfData)
 	{
-		return null;
+		return gson.toJson(sysPerfData);
 	}
 	
 	public String systemStateDataToJson(SystemStateData sysStateData)
 	{
-		return null;
+		throw new NotImplementedError("dont call me pls");
 	}
 	
 	public ActuatorData jsonToActuatorData(String jsonData)
 	{
-		return null;
+		return gson.fromJson(jsonData, ActuatorData.class);
 	}
 	
 	public SensorData jsonToSensorData(String jsonData)
 	{
-		return null;
+		return gson.fromJson(jsonData, SensorData.class);
 	}
 	
 	public SystemPerformanceData jsonToSystemPerformanceData(String jsonData)
 	{
-		return null;
+		return gson.fromJson(jsonData, SystemPerformanceData.class);
 	}
 	
 	public SystemStateData jsonToSystemStateData(String jsonData)
 	{
-		return null;
+		throw new NotImplementedError("dont call me pls");
 	}
 	
 }
