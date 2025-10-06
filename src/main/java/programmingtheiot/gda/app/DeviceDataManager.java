@@ -194,5 +194,7 @@ public class DeviceDataManager implements IDataMessageListener
 	private void initConnections()
 	{
 	}
+
+	// add methods later
 	
 }
