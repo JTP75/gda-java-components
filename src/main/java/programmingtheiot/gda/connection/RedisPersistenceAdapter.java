@@ -41,7 +41,10 @@ public class RedisPersistenceAdapter implements IPersistenceClient
 		Logger.getLogger(RedisPersistenceAdapter.class.getName());
 	
 	// private var's
-	
+	private String host;
+	private int port;
+	private Jedis client = null;
+	private boolean connected = false;
 	
 	// constructors
 	
@@ -52,6 +55,19 @@ public class RedisPersistenceAdapter implements IPersistenceClient
 	public RedisPersistenceAdapter()
 	{
 		super();
+
+		this.host = ConfigUtil.getInstance().getProperty(
+			ConfigConst.DATA_GATEWAY_SERVICE, 
+			ConfigConst.HOST_KEY
+		);
+
+		this.port = ConfigUtil.getInstance().getInteger(
+			ConfigConst.DATA_GATEWAY_SERVICE, 
+			ConfigConst.PORT_KEY
+		);
+
+		// create redis cli instance
+		this.client = new Jedis(this.host, this.port);
 		
 		initConfig();
 	}
@@ -60,6 +76,10 @@ public class RedisPersistenceAdapter implements IPersistenceClient
 	// public methods
 	
 	// public methods
+
+	public boolean isConnected() {
+		return this.connected;
+	}
 	
 	/**
 	 *
@@ -67,7 +87,27 @@ public class RedisPersistenceAdapter implements IPersistenceClient
 	@Override
 	public boolean connectClient()
 	{
-		return false;
+		if (connected) {
+			_Logger.warning("Redis client is already connected.");
+			return true;
+		}
+
+		try {
+			this.client.connect();
+			if (this.client.ping().equals("PONG")) {
+				_Logger.info("Redis client connected to " + this.host + ":" + this.port);
+				this.connected = true;
+				return true;
+			} else {
+				_Logger.log(Level.SEVERE, "Could not connect to Redis server at " + this.host + ":" + this.port);
+				this.connected = false;
+				return false;
+			}
+		} catch (JedisConnectionException e) {
+			_Logger.log(Level.SEVERE, "Could not connect to Redis server at " + this.host + ":" + this.port, e);
+			this.connected = false;
+			return false;
+		}
 	}
 
 	/**
@@ -76,25 +116,77 @@ public class RedisPersistenceAdapter implements IPersistenceClient
 	@Override
 	public boolean disconnectClient()
 	{
-		return false;
+		if (!connected)	{
+			_Logger.warning("Redis client is already disconnected.");
+			return true;
+		}
+
+		try {
+			this.client.disconnect();
+			this.connected = false;
+			_Logger.info("Redis client disconnected from " + this.host + ":" + this.port);
+			return true;
+		} catch (JedisConnectionException e) {
+			_Logger.log(Level.SEVERE, "Could not disconnect from Redis server at " + this.host + ":" + this.port, e);
+			this.connected = true;
+			return false;
+		}
 	}
 
 	/**
-	 *
+	 * retrieves all actuator data for the given topic between the given dates (inclusive)
+	 * 
+	 * @note skipping date filtering for now
 	 */
 	@Override
 	public ActuatorData[] getActuatorData(String topic, Date startDate, Date endDate)
 	{
-		return null;
+		if (!connected) {
+			_Logger.warning("Redis client is not connected.");
+			return null;
+		}
+
+		if (topic == null || topic.isEmpty()) {
+			_Logger.warning("Topic is null or empty.");
+			return null;
+		}
+		
+		List<ActuatorData> dataList = new ArrayList<>();
+
+		String rsltJson = this.client.get(topic);
+		ActuatorData ad = DataUtil.getInstance().jsonToActuatorData(rsltJson);
+		if (ad != null) {
+			dataList.add(ad);
+		}
+
+		return dataList.toArray(new ActuatorData[0]);
 	}
 
 	/**
-	 *
+	 * retrieves all sensor data for the given topic between the given dates (inclusive)
 	 */
 	@Override
 	public SensorData[] getSensorData(String topic, Date startDate, Date endDate)
 	{
-		return null;
+		if (!connected) {
+			_Logger.warning("Redis client is not connected.");
+			return null;
+		}
+
+		if (topic == null || topic.isEmpty()) {
+			_Logger.warning("Topic is null or empty.");
+			return null;
+		}
+
+		List<SensorData> dataList = new ArrayList<>();
+
+		String rsltJson = this.client.get(topic);
+		SensorData sd = DataUtil.getInstance().jsonToSensorData(rsltJson);
+		if (sd != null) {
+			dataList.add(sd);
+		}
+
+		return dataList.toArray(new SensorData[0]);
 	}
 
 	/**
@@ -111,7 +203,34 @@ public class RedisPersistenceAdapter implements IPersistenceClient
 	@Override
 	public boolean storeData(String topic, int qos, ActuatorData... data)
 	{
-		return false;
+		if (!connected) {
+			_Logger.warning("Redis client is not connected.");
+			return false;
+		}
+
+		if (topic == null || topic.isEmpty()) {
+			_Logger.warning("Topic is null or empty.");
+			return false;
+		}
+
+		if (data == null || data.length == 0) {
+			_Logger.warning("No ActuatorData provided to store.");
+			return false;
+		}
+
+		try {
+			for (ActuatorData ad : data) {
+				if (ad != null) {
+					String key = topic + ":" + ad.getName() + ":" + System.currentTimeMillis();
+					String jsonData = DataUtil.getInstance().actuatorDataToJson(ad);
+					this.client.set(key, jsonData);
+				}
+			}
+			return true;
+		} catch (JedisConnectionException e) {
+			_Logger.log(Level.SEVERE, "Error storing actuator data to Redis server.", e);
+			return false;
+		}
 	}
 
 	/**
@@ -120,7 +239,34 @@ public class RedisPersistenceAdapter implements IPersistenceClient
 	@Override
 	public boolean storeData(String topic, int qos, SensorData... data)
 	{
-		return false;
+		if (!connected) {
+			_Logger.warning("Redis client is not connected.");
+			return false;
+		}
+
+		if (topic == null || topic.isEmpty()) {
+			_Logger.warning("Topic is null or empty.");
+			return false;
+		}
+
+		if (data == null || data.length == 0) {
+			_Logger.warning("No SensorData provided to store.");
+			return false;
+		}
+
+		try {
+			for (SensorData sd : data) {
+				if (sd != null) {
+					String key = topic + ":" + sd.getName() + ":" + System.currentTimeMillis();
+					String jsonData = DataUtil.getInstance().sensorDataToJson(sd);
+					this.client.set(key, jsonData);
+				}
+			}
+			return true;
+		} catch (JedisConnectionException e) {
+			_Logger.log(Level.SEVERE, "Error storing sensor data to Redis server.", e);
+			return false;
+		}
 	}
 
 	/**
@@ -129,7 +275,34 @@ public class RedisPersistenceAdapter implements IPersistenceClient
 	@Override
 	public boolean storeData(String topic, int qos, SystemPerformanceData... data)
 	{
-		return false;
+		if (!connected) {
+			_Logger.warning("Redis client is not connected.");
+			return false;
+		}
+
+		if (topic == null || topic.isEmpty()) {
+			_Logger.warning("Topic is null or empty.");
+			return false;
+		}
+
+		if (data == null || data.length == 0) {
+			_Logger.warning("No SystemPerformanceData provided to store.");
+			return false;
+		}
+
+		try {
+			for (SystemPerformanceData spd : data) {
+				if (spd != null) {
+					String key = topic + ":" + spd.getName() + ":" + System.currentTimeMillis();
+					String jsonData = DataUtil.getInstance().systemPerformanceDataToJson(spd);
+					this.client.set(key, jsonData);
+				}
+			}
+			return true;
+		} catch (JedisConnectionException e) {
+			_Logger.log(Level.SEVERE, "Error storing system performance data to Redis server.", e);
+			return false;
+		}
 	}
 	
 	

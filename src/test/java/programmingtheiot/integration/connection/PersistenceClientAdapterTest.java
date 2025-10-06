@@ -19,7 +19,12 @@ import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
+import programmingtheiot.data.ActuatorData;
+import programmingtheiot.data.DataUtil;
+import programmingtheiot.data.SensorData;
+import programmingtheiot.data.SystemPerformanceData;
 import programmingtheiot.gda.connection.RedisPersistenceAdapter;
+import redis.clients.jedis.Jedis;
 
 /**
  * This test case class contains very basic integration tests for
@@ -66,6 +71,7 @@ public class PersistenceClientAdapterTest
 	@Before
 	public void setUp() throws Exception
 	{
+		this.rpa = new RedisPersistenceAdapter();
 	}
 	
 	/**
@@ -84,7 +90,8 @@ public class PersistenceClientAdapterTest
 	@Test
 	public void testConnectClient()
 	{
-		fail("Not yet implemented"); // TODO
+		assertTrue(this.rpa.connectClient());
+		assertTrue(this.rpa.isConnected());
 	}
 	
 	/**
@@ -93,7 +100,9 @@ public class PersistenceClientAdapterTest
 	@Test
 	public void testDisconnectClient()
 	{
-		fail("Not yet implemented"); // TODO
+		this.rpa.connectClient();
+		assertTrue(this.rpa.disconnectClient());
+		assertFalse(this.rpa.isConnected());
 	}
 	
 	/**
@@ -102,7 +111,31 @@ public class PersistenceClientAdapterTest
 	@Test
 	public void testGetActuatorData()
 	{
-		fail("Not yet implemented"); // TODO
+		// add data to redis db
+		ActuatorData ad = new ActuatorData();
+		ad.setName("testActuatorData");
+		ad.setCommand(1);
+		ad.setValue(123.45f);
+		Jedis client = new Jedis("localhost", 6379);
+		String ads = DataUtil.getInstance().actuatorDataToJson(ad);
+		try {
+			client.connect();
+			assertTrue(client.ping().equals("PONG"));
+			assertTrue(client.set("actuatortopic", ads).equals("OK"));
+		} catch (Exception e) {
+			fail("Could not connect to Redis server at localhost:6379");
+		}
+
+		// now retrieve it via rpa
+		this.rpa.connectClient();
+		ActuatorData[] adArr = this.rpa.getActuatorData("actuatortopic", null, null);
+		assertNotNull(adArr);
+		assertEquals(1, adArr.length);
+		assertEquals("testActuatorData", adArr[0].getName());
+		assertEquals(1, adArr[0].getCommand());
+		assertEquals(123.45f, adArr[0].getValue(), 0.001f);
+		this.rpa.disconnectClient();
+		client.close();
 	}
 	
 	/**
@@ -111,7 +144,29 @@ public class PersistenceClientAdapterTest
 	@Test
 	public void testGetSensorData()
 	{
-		fail("Not yet implemented"); // TODO
+		// add data to redis db
+		SensorData sd = new SensorData();
+		sd.setName("testSensorData");
+		sd.setValue(123.45f);
+		Jedis client = new Jedis("localhost", 6379);
+		String ads = DataUtil.getInstance().sensorDataToJson(sd);
+		try {
+			client.connect();
+			assertTrue(client.ping().equals("PONG"));
+			assertTrue(client.set("sensortopic", ads).equals("OK"));
+		} catch (Exception e) {
+			fail("Could not connect to Redis server at localhost:6379");
+		}
+
+		// now retrieve it via rpa
+		this.rpa.connectClient();
+		SensorData[] sdArr = this.rpa.getSensorData("sensortopic", null, null);
+		assertNotNull(sdArr);
+		assertEquals(1, sdArr.length);
+		assertEquals("testSensorData", sdArr[0].getName());
+		assertEquals(123.45f, sdArr[0].getValue(), 0.001f);
+		this.rpa.disconnectClient();
+		client.close();
 	}
 	
 	/**
@@ -120,7 +175,16 @@ public class PersistenceClientAdapterTest
 	@Test
 	public void testStoreDataStringIntActuatorDataArray()
 	{
-		fail("Not yet implemented"); // TODO
+		this.rpa.connectClient();
+		
+		ActuatorData ad = new ActuatorData();
+		ad.setName("testActuatorData");
+		ad.setCommand(1);
+		ad.setValue(123.45f);
+		
+		assertTrue(this.rpa.storeData("actuatortopic", 0, ad));
+		
+		this.rpa.disconnectClient();
 	}
 	
 	/**
@@ -129,7 +193,15 @@ public class PersistenceClientAdapterTest
 	@Test
 	public void testStoreDataStringIntSensorDataArray()
 	{
-		fail("Not yet implemented"); // TODO
+		this.rpa.connectClient();
+		
+		SensorData sd = new SensorData();
+		sd.setName("testSensorData");
+		sd.setValue(123.45f);
+		
+		assertTrue(this.rpa.storeData("sensortopic", 0, sd));
+		
+		this.rpa.disconnectClient();
 	}
 	
 	/**
@@ -138,7 +210,15 @@ public class PersistenceClientAdapterTest
 	@Test
 	public void testStoreDataStringIntSystemPerformanceDataArray()
 	{
-		fail("Not yet implemented"); // TODO
+		this.rpa.connectClient();
+		
+		SystemPerformanceData spd = new SystemPerformanceData();
+		spd.setCpuUtilization(12.34f);
+		spd.setMemoryUtilization(34.56f);
+		
+		assertTrue(this.rpa.storeData("systemperformancetopic", 0, spd));
+		
+		this.rpa.disconnectClient();
 	}
 	
 }
