@@ -34,6 +34,7 @@ import programmingtheiot.gda.connection.MqttClientConnector;
 import programmingtheiot.gda.connection.RedisPersistenceAdapter;
 import programmingtheiot.gda.connection.SmtpClientConnector;
 import programmingtheiot.gda.system.SystemPerformanceManager;
+import redis.clients.jedis.JedisPubSub;
 
 /**
  * Shell representation of class for student implementation.
