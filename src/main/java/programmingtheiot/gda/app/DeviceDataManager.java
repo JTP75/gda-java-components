@@ -101,6 +101,11 @@ public class DeviceDataManager implements IDataMessageListener
 			this.systemPerfMgr.setDataMessageListener(this);
 			_Logger.info("System Performance Management Enabled");
 		}
+
+		if (this.enablePersistenceClient) {
+			this.persistenceClient = new RedisPersistenceAdapter();
+			_Logger.info("Persistence Client Enabled");
+		}
 		
 		initConnections();
 	}
@@ -126,6 +131,9 @@ public class DeviceDataManager implements IDataMessageListener
 		if (data != null) {
 			_Logger.info("Handling Actuator Command Response: " + data.getName());
 			if (data.hasError()) { _Logger.warning("Error in Actuator Data"); }
+			if (this.persistenceClient != null) {
+				this.persistenceClient.storeData(resourceName.getResourceName(), 0, data);
+			}
 			return true;
 		} 
 		return false;
@@ -153,6 +161,9 @@ public class DeviceDataManager implements IDataMessageListener
 		if (data != null) {
 			_Logger.info("Handling Sensor Message: " + data.getName());
 			if (data.hasError()) { _Logger.warning("Error in Sensor Data"); }
+			if (this.persistenceClient != null) {
+				this.persistenceClient.storeData(resourceName.getResourceName(), 0, data);
+			}
 			return true;
 		}
 		return false;
@@ -177,6 +188,7 @@ public class DeviceDataManager implements IDataMessageListener
 	{
 		_Logger.info("Starting DeviceDataManager...");
 		if (this.systemPerfMgr != null) { this.systemPerfMgr.startManager(); }
+		if (this.persistenceClient != null) { this.persistenceClient.connectClient(); }
 		_Logger.info("DeviceDataManager started");
 	}
 	
@@ -184,6 +196,7 @@ public class DeviceDataManager implements IDataMessageListener
 	{
 		_Logger.info("Stopping DeviceDataManager...");
 		if (this.systemPerfMgr != null) { this.systemPerfMgr.stopManager(); }
+		if (this.persistenceClient != null) { this.persistenceClient.disconnectClient(); }
 		_Logger.info("DeviceDataManager stopped");
 	}
 
