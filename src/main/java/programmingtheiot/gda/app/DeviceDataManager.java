@@ -39,7 +39,7 @@ import programmingtheiot.gda.system.SystemPerformanceManager;
  * Shell representation of class for student implementation.
  *
  */
-public class DeviceDataManager implements IDataMessageListener
+public class DeviceDataManager extends JedisPubSub implements IDataMessageListener
 {
 	// static
 	
