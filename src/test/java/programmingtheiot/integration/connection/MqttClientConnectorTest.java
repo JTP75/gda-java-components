@@ -103,11 +103,10 @@ public class MqttClientConnectorTest
 	/**
 	 * Test method for {@link programmingtheiot.gda.connection.MqttClientConnector#publishMessage(programmingtheiot.common.ResourceNameEnum, java.lang.String, int)}.
 	 */
-	// @Test
+	@Test
 	public void testPublishAndSubscribe()
 	{
 		int qos = 0;
-		int delay = ConfigUtil.getInstance().getInteger(ConfigConst.MQTT_GATEWAY_SERVICE, ConfigConst.KEEP_ALIVE_KEY, ConfigConst.DEFAULT_KEEP_ALIVE);
 		
 		assertTrue(this.mqttClient.connectClient());
 		assertTrue(this.mqttClient.subscribeToTopic(ResourceNameEnum.GDA_MGMT_STATUS_MSG_RESOURCE, qos));
@@ -115,38 +114,20 @@ public class MqttClientConnectorTest
 		assertTrue(this.mqttClient.subscribeToTopic(ResourceNameEnum.CDA_SENSOR_MSG_RESOURCE, qos));
 		assertTrue(this.mqttClient.subscribeToTopic(ResourceNameEnum.CDA_SYSTEM_PERF_MSG_RESOURCE, qos));
 		
-		try {
-			Thread.sleep(5000);
-		} catch (Exception e) {
-			// ignore
-		}
+		sleep(2000);
 		
 		assertTrue(this.mqttClient.publishMessage(ResourceNameEnum.GDA_MGMT_STATUS_MSG_RESOURCE, "TEST: This is the GDA message payload 1.", qos));
 		assertTrue(this.mqttClient.publishMessage(ResourceNameEnum.GDA_MGMT_STATUS_MSG_RESOURCE, "TEST: This is the GDA message payload 2.", qos));
 		assertTrue(this.mqttClient.publishMessage(ResourceNameEnum.GDA_MGMT_STATUS_MSG_RESOURCE, "TEST: This is the GDA message payload 3.", qos));
 		
-		try {
-			Thread.sleep(25000);
-		} catch (Exception e) {
-			// ignore
-		}
+		sleep(5000);
 		
 		assertTrue(this.mqttClient.unsubscribeFromTopic(ResourceNameEnum.GDA_MGMT_STATUS_MSG_RESOURCE));
 		assertTrue(this.mqttClient.unsubscribeFromTopic(ResourceNameEnum.CDA_ACTUATOR_RESPONSE_RESOURCE));
 		assertTrue(this.mqttClient.unsubscribeFromTopic(ResourceNameEnum.CDA_SENSOR_MSG_RESOURCE));
 		assertTrue(this.mqttClient.unsubscribeFromTopic(ResourceNameEnum.CDA_SYSTEM_PERF_MSG_RESOURCE));
 
-		try {
-			Thread.sleep(5000);
-		} catch (Exception e) {
-			// ignore
-		}
-
-		try {
-			Thread.sleep(delay * 1000);
-		} catch (Exception e) {
-			// ignore
-		}
+		sleep(5000);
 		
 		assertTrue(this.mqttClient.disconnectClient());
 	}

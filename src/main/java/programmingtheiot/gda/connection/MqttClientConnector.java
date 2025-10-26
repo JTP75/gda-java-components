@@ -146,27 +146,80 @@ public class MqttClientConnector implements IPubSubClient, MqttCallbackExtended
 
 	public boolean isConnected()
 	{
-		return this.mqttClient.isConnected();
+		return this.mqttClient!=null && this.mqttClient.isConnected();
 	}
 	
 	@Override
-	public boolean publishMessage(ResourceNameEnum topicName, String msg, int qos)
+	public boolean publishMessage(ResourceNameEnum topic, String msg, int qos)
 	{
-		// TODO 
+		// validations
+		if (topic == null) {
+			_Logger.warning("Resource is null. Unable to publish message: " + this.brokerAddr);
+			return false;
+		}
+		if (msg == null || msg.length() == 0) {
+			_Logger.warning("Message is null or empty. Unable to publish message: " + this.brokerAddr);
+			return false;
+		}
+		if (qos<0 || qos>2) {
+			qos = ConfigConst.DEFAULT_QOS;
+		}
+
+		// publish
+		try {
+			MqttMessage mqttMsg = new MqttMessage(msg.getBytes());
+			mqttMsg.setQos(qos);
+			this.mqttClient.publish(topic.getResourceName(), mqttMsg);
+			return true;
+		} catch  (Exception e) {
+			_Logger.severe("Failed to publish message to topic '" + topic.getResourceName() + "': " + e);
+		}
+
 		return false;
 	}
 
 	@Override
-	public boolean subscribeToTopic(ResourceNameEnum topicName, int qos)
+	public boolean subscribeToTopic(ResourceNameEnum topic, int qos)
 	{
-		// TODO 
+		// validations
+		if (topic == null) {
+			_Logger.warning("Resource is null. Unable to subscribe: " + this.brokerAddr);
+			return false;
+		}
+		if (qos<0 || qos>2) {
+			qos = ConfigConst.DEFAULT_QOS;
+		}
+
+		// subscribe
+		try {
+			this.mqttClient.subscribe(topic.getResourceName(), qos);
+			_Logger.info("Successfully subscribed to topic: " + topic.getResourceName());
+			return true;
+		} catch (Exception e) {
+			_Logger.severe("Failed to subscribe to topic '" + topic + "': " + e);
+		}
+
 		return false;
 	}
 
 	@Override
-	public boolean unsubscribeFromTopic(ResourceNameEnum topicName)
+	public boolean unsubscribeFromTopic(ResourceNameEnum topic)
 	{
-		// TODO 
+		// validation
+		if (topic == null) {
+			_Logger.warning("Resource is null. Unable to subscribe: " + this.brokerAddr);
+			return false;
+		}
+		
+		// unsubscribe
+		try {
+			this.mqttClient.unsubscribe(topic.getResourceName());
+			_Logger.info("Successfully unsubscribed from topic: " + topic.getResourceName());
+			return true;
+		} catch (Exception e) {
+			_Logger.severe("Failed to unsubscribe from topic '" + topic.getResourceName() + "':" + e);
+		}
+
 		return false;
 	}
 
