@@ -100,12 +100,18 @@ public class DeviceDataManager extends JedisPubSub implements IDataMessageListen
 		if (this.enableSystemPerf) {
 			this.systemPerfMgr = new SystemPerformanceManager();
 			this.systemPerfMgr.setDataMessageListener(this);
-			_Logger.info("System Performance Management Enabled");
+			_Logger.info("System performance management enabled");
 		}
 
 		if (this.enablePersistenceClient) {
 			this.persistenceClient = new RedisPersistenceAdapter();
-			_Logger.info("Persistence Client Enabled");
+			_Logger.info("Persistence client enabled");
+		}
+
+		if (this.enableMqttClient) {
+			this.mqttClient = new MqttClientConnector();
+			_Logger.info("MQTT client enabled");
+			this.mqttClient.setDataMessageListener(this);
 		}
 		
 		initConnections();
@@ -190,6 +196,24 @@ public class DeviceDataManager extends JedisPubSub implements IDataMessageListen
 		_Logger.info("Starting DeviceDataManager...");
 		if (this.systemPerfMgr != null) { this.systemPerfMgr.startManager(); }
 		if (this.persistenceClient != null) { this.persistenceClient.connectClient(); }
+		if (this.mqttClient != null) {
+			if (this.mqttClient.connectClient()) {
+				_Logger.info("Successfully connected to MQTT broker.");
+				int qos = ConfigUtil.getInstance().getInteger(
+					ConfigConst.GATEWAY_DEVICE,
+					ConfigConst.DEFAULT_QOS_KEY,
+					ConfigConst.DEFAULT_QOS
+				);
+				
+				// TODO these will be relocated later
+				this.mqttClient.subscribeToTopic(ResourceNameEnum.GDA_MGMT_STATUS_MSG_RESOURCE, qos);
+				this.mqttClient.subscribeToTopic(ResourceNameEnum.CDA_ACTUATOR_RESPONSE_RESOURCE, qos);
+				this.mqttClient.subscribeToTopic(ResourceNameEnum.CDA_SENSOR_MSG_RESOURCE, qos);
+				this.mqttClient.subscribeToTopic(ResourceNameEnum.CDA_SYSTEM_PERF_MSG_RESOURCE, qos);
+			} else {
+				_Logger.severe("Failed to connect to MQTT broker.");
+			}
+		}
 		_Logger.info("DeviceDataManager started");
 	}
 	
@@ -198,6 +222,18 @@ public class DeviceDataManager extends JedisPubSub implements IDataMessageListen
 		_Logger.info("Stopping DeviceDataManager...");
 		if (this.systemPerfMgr != null) { this.systemPerfMgr.stopManager(); }
 		if (this.persistenceClient != null) { this.persistenceClient.disconnectClient(); }
+		if (this.mqttClient != null) {
+			this.mqttClient.unsubscribeFromTopic(ResourceNameEnum.GDA_MGMT_STATUS_MSG_RESOURCE);
+			this.mqttClient.unsubscribeFromTopic(ResourceNameEnum.CDA_ACTUATOR_RESPONSE_RESOURCE);
+			this.mqttClient.unsubscribeFromTopic(ResourceNameEnum.CDA_SENSOR_MSG_RESOURCE);
+			this.mqttClient.unsubscribeFromTopic(ResourceNameEnum.CDA_SYSTEM_PERF_MSG_RESOURCE);
+			
+			if (this.mqttClient.disconnectClient()) {
+				_Logger.info("Successfully disconnected to MQTT broker.");
+			} else {
+				_Logger.severe("Failed to disconnect to MQTT broker.");
+			}
+		}
 		_Logger.info("DeviceDataManager stopped");
 	}
 

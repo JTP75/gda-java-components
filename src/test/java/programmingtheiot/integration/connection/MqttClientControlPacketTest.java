@@ -43,6 +43,17 @@ public class MqttClientControlPacketTest
 	// member var's
 	
 	private MqttClientConnector mqttClient = null;
+
+	/**
+	 * sleep try/catch wrapper
+	 */
+	private void sleep(long millis) {
+		try {
+			Thread.sleep(millis);
+		} catch (Exception e) {
+			// ignore
+		}
+	}
 	
 	
 	// test setup methods
@@ -63,21 +74,66 @@ public class MqttClientControlPacketTest
 	@Test
 	public void testConnectAndDisconnect()
 	{
-		// TODO: implement this test
+		assertTrue(this.mqttClient.connectClient());
+		assertFalse(this.mqttClient.connectClient());
+		
+		sleep(2000);
+		assertTrue(this.mqttClient.isConnected());
+
+		assertTrue(this.mqttClient.disconnectClient());
+		assertFalse(this.mqttClient.disconnectClient());
+		
+		sleep(2000);
+		assertFalse(this.mqttClient.isConnected());
 	}
 	
 	@Test
 	public void testServerPing()
 	{
-		// TODO: implement this test
+		this.mqttClient.connectClient();
+		sleep(80000);
+		this.mqttClient.disconnectClient();
+		sleep(2000);
 	}
 	
 	@Test
-	public void testPubSub()
+	public void testPubSubQos1()
 	{
-		// TODO: implement this test
-		// 
-		// IMPORTANT: be sure to use QoS 1 and 2 to see ALL control packets
+		int qos = 1;
+		this.mqttClient.connectClient();
+		sleep(2000);
+		
+		this.mqttClient.subscribeToTopic(ResourceNameEnum.CDA_SENSOR_MSG_RESOURCE, qos);
+		sleep(2000);
+
+		this.mqttClient.publishMessage(ResourceNameEnum.CDA_SENSOR_MSG_RESOURCE, "ground control to major tom", qos);
+		sleep(2000);
+
+		this.mqttClient.unsubscribeFromTopic(ResourceNameEnum.CDA_SENSOR_MSG_RESOURCE);
+		sleep(2000);
+
+		this.mqttClient.disconnectClient();
+		sleep(2000);
+	}
+	
+	@Test
+	public void testPubSubQos2()
+	{
+		int qos = 2;
+		this.mqttClient.connectClient();
+		sleep(2000);
+		
+		this.mqttClient.subscribeToTopic(ResourceNameEnum.CDA_SENSOR_MSG_RESOURCE, qos);
+		sleep(2000);
+
+		this.mqttClient.publishMessage(ResourceNameEnum.CDA_SENSOR_MSG_RESOURCE, "major tom to ground control", qos);
+		sleep(2000);
+
+		this.mqttClient.unsubscribeFromTopic(ResourceNameEnum.CDA_SENSOR_MSG_RESOURCE);
+		sleep(2000);
+
+		this.mqttClient.disconnectClient();
+		sleep(2000);
 	}
 	
 }
