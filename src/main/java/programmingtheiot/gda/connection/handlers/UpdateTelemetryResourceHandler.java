@@ -9,6 +9,7 @@ import org.eclipse.californium.core.server.resources.CoapExchange;
 import programmingtheiot.common.IDataMessageListener;
 import programmingtheiot.common.ResourceNameEnum;
 import programmingtheiot.data.DataUtil;
+import programmingtheiot.data.SensorData;
 import programmingtheiot.data.SystemPerformanceData;
 
 public class UpdateTelemetryResourceHandler extends GenericCoapResourceHandler {
@@ -26,7 +27,7 @@ public class UpdateTelemetryResourceHandler extends GenericCoapResourceHandler {
      */
     public UpdateTelemetryResourceHandler() {
         // uses the UpdateMsg resource
-        super(ResourceNameEnum.CDA_SYSTEM_PERF_MSG_RESOURCE.getResourceType());
+        super(ResourceNameEnum.CDA_SENSOR_MSG_RESOURCE.getResourceType());
     }
 
     /**
@@ -61,15 +62,15 @@ public class UpdateTelemetryResourceHandler extends GenericCoapResourceHandler {
         try {
             String jsonData = new String(context.getRequestPayload());
 
-            SystemPerformanceData spd = 
-                DataUtil.getInstance().jsonToSystemPerformanceData(jsonData);
+            SensorData sd = 
+                DataUtil.getInstance().jsonToSensorData(jsonData);
 
-            this.dataMsgListener.handleSystemPerformanceMessage(
-                ResourceNameEnum.CDA_SYSTEM_PERF_MSG_RESOURCE, spd);
+            this.dataMsgListener.handleSensorMessage(
+                ResourceNameEnum.CDA_SYSTEM_PERF_MSG_RESOURCE, sd);
 
             context.respond(
                 ResponseCode.CHANGED,
-                "Handled Update sys perf data request: " + super.getName()
+                "Handled Update sensor data request: " + super.getName()
             );
         } catch (Exception e) {
             _Logger.log(Level.WARNING, "Failed to handle PUT request", e);
