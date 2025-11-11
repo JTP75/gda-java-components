@@ -83,6 +83,24 @@ public class DeviceDataManagerWithCommsTest
 	 * Test method for running the DeviceDataManager.
 	 */
 	@Test
+	public void testStartAndStopManager()
+	{
+		DeviceDataManager devDataMgr = new DeviceDataManager();
+		devDataMgr.startManager();
+		
+		try {
+			Thread.sleep(15000L);
+		} catch (InterruptedException e) {
+			// ignore
+		}
+		
+		devDataMgr.stopManager();
+	}
+	
+	/**
+	 * Test method for running the DeviceDataManager with MQTT.
+	 */
+	@Test
 	public void testStartAndStopManagerWithMqtt()
 	{
 		DeviceDataManager devDataMgr = new DeviceDataManager();
@@ -101,7 +119,7 @@ public class DeviceDataManagerWithCommsTest
 		mqttClient.publishMessage(ResourceNameEnum.CDA_SENSOR_MSG_RESOURCE, sdJson, 1);
 		
 		try {
-			Thread.sleep(60000L);
+			Thread.sleep(10000L);
 		} catch (InterruptedException e) {
 			// ignore
 		}

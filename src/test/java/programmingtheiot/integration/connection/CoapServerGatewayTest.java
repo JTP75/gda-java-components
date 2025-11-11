@@ -9,6 +9,8 @@
 
 package programmingtheiot.integration.connection;
 
+import static org.junit.Assert.assertTrue;
+
 import java.util.Set;
 import java.util.logging.Logger;
 
@@ -81,8 +83,8 @@ public class CoapServerGatewayTest
 				ConfigConst.DEFAULT_COAP_PROTOCOL + "://" + ConfigConst.DEFAULT_HOST + ":" + ConfigConst.DEFAULT_COAP_PORT;
 			
 			this.csg = new CoapServerGateway(new DefaultDataMessageListener());
-			this.csg.startServer();
-			
+			assertTrue(this.csg.startServer());
+
 			Thread.sleep(5000);
 			
 			CoapClient clientConn = new CoapClient(url);
@@ -114,9 +116,12 @@ public class CoapServerGatewayTest
 			clientConn.get();
 			
 			// wait for 2 min's (so other app tests can run)
-			Thread.sleep(120000L);
+			// Thread.sleep(120000L);
+
+			// for now 20 sec's is plenty
+			Thread.sleep(20000L);
 			
-			this.csg.stopServer();
+			assertTrue(this.csg.stopServer());
 		} catch (Exception e) {
 			// ignore
 		}

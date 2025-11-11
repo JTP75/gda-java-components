@@ -113,6 +113,12 @@ public class DeviceDataManager extends JedisPubSub implements IDataMessageListen
 			_Logger.info("MQTT client enabled");
 			this.mqttClient.setDataMessageListener(this);
 		}
+
+		if (this.enableCoapServer) {
+			this.coapServer = new CoapServerGateway();
+			_Logger.info("CoAP server enabled");
+			this.coapServer.setDataMessageListener(this);
+		}
 		
 		initConnections();
 	}
@@ -194,6 +200,7 @@ public class DeviceDataManager extends JedisPubSub implements IDataMessageListen
 	public void startManager()
 	{
 		_Logger.info("Starting DeviceDataManager...");
+
 		if (this.systemPerfMgr != null) { this.systemPerfMgr.startManager(); }
 		if (this.persistenceClient != null) { this.persistenceClient.connectClient(); }
 		if (this.mqttClient != null) {
@@ -214,12 +221,21 @@ public class DeviceDataManager extends JedisPubSub implements IDataMessageListen
 				_Logger.severe("Failed to connect to MQTT broker.");
 			}
 		}
+		if (this.coapServer != null) {
+			if (this.coapServer.startServer()) {
+				_Logger.info("CoAP server started.");
+			} else {
+				_Logger.severe("Failed to start CoAP server. Check log file for details.");
+			}
+		}
+
 		_Logger.info("DeviceDataManager started");
 	}
 	
 	public void stopManager()
 	{
 		_Logger.info("Stopping DeviceDataManager...");
+
 		if (this.systemPerfMgr != null) { this.systemPerfMgr.stopManager(); }
 		if (this.persistenceClient != null) { this.persistenceClient.disconnectClient(); }
 		if (this.mqttClient != null) {
@@ -234,6 +250,14 @@ public class DeviceDataManager extends JedisPubSub implements IDataMessageListen
 				_Logger.severe("Failed to disconnect to MQTT broker.");
 			}
 		}
+		if (this.coapServer != null) {
+			if (this.coapServer.stopServer()) {
+				_Logger.info("CoAP server stopped.");
+			} else {
+				_Logger.severe("Failed to stop CoAP server. Check log file for details.");
+			}
+		}
+
 		_Logger.info("DeviceDataManager stopped");
 	}
 
