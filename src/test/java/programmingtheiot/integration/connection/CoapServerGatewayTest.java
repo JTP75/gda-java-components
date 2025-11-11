@@ -10,8 +10,10 @@
 package programmingtheiot.integration.connection;
 
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 import java.util.Set;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import org.eclipse.californium.core.CoapClient;
@@ -118,12 +120,13 @@ public class CoapServerGatewayTest
 			// wait for 2 min's (so other app tests can run)
 			// Thread.sleep(120000L);
 
-			// for now 20 sec's is plenty
-			Thread.sleep(20000L);
+			// for now 10 sec's is plenty
+			Thread.sleep(10000L);
 			
 			assertTrue(this.csg.stopServer());
 		} catch (Exception e) {
-			// ignore
+			_Logger.log(Level.SEVERE, "Failed", e);
+			fail();
 		}
 	}
 	

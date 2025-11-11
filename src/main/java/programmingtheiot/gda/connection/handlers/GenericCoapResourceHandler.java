@@ -11,6 +11,7 @@
 
 package programmingtheiot.gda.connection.handlers;
 
+import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import org.eclipse.californium.core.CoapResource;
@@ -65,21 +66,33 @@ public class GenericCoapResourceHandler extends CoapResource
 	@Override
 	public void handleDELETE(CoapExchange context)
 	{
+		context.accept();
+		_Logger.log(Level.INFO, "Received DELETE request (generic). Ignoring");
+		context.respond(ResponseCode.CONTINUE);
 	}
 	
 	@Override
 	public void handleGET(CoapExchange context)
 	{
+		context.accept();
+		_Logger.log(Level.INFO, "Received GET request (generic). Ignoring");
+		context.respond(ResponseCode.CONTINUE);
 	}
 	
 	@Override
 	public void handlePOST(CoapExchange context)
 	{
+		context.accept();
+		_Logger.log(Level.INFO, "Received POST request (generic). Ignoring");
+		context.respond(ResponseCode.CONTINUE);
 	}
 	
 	@Override
 	public void handlePUT(CoapExchange context)
 	{
+		context.accept();
+		_Logger.log(Level.INFO, "Received PUT request (generic). Ignoring");
+		context.respond(ResponseCode.CONTINUE);
 	}
 	
 	public void setDataMessageListener(IDataMessageListener listener)

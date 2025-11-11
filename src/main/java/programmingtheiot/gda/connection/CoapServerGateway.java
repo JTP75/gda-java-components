@@ -11,9 +11,13 @@
 
 package programmingtheiot.gda.connection;
 
+import java.util.List;
+import java.util.Queue;
+import java.util.concurrent.ArrayBlockingQueue;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import org.eclipse.californium.core.CoapResource;
 import org.eclipse.californium.core.CoapServer;
 import org.eclipse.californium.core.server.resources.Resource;
 import org.eclipse.californium.core.config.CoapConfig;
@@ -28,6 +32,7 @@ import programmingtheiot.common.ConfigUtil;
 import programmingtheiot.common.IDataMessageListener;
 import programmingtheiot.common.ResourceNameEnum;
 import programmingtheiot.gda.connection.handlers.GenericCoapResourceHandler;
+import programmingtheiot.gda.connection.handlers.UpdateSystemPerformanceResourceHandler;
 
 /**
  * config init for californium
@@ -83,7 +88,9 @@ public class CoapServerGateway
 
 	public void addResource(ResourceNameEnum name, String endName, Resource resource)
 	{
-		// TODO
+		if (name!=null && resource!=null) {
+			createAndAddResourceChain(name, resource);
+		}
 	}
 	
 	public boolean hasResource(String name)
@@ -132,9 +139,39 @@ public class CoapServerGateway
 	
 	// private methods
 	
-	private Resource createResourceChain(ResourceNameEnum resource)
+	private Resource createAndAddResourceChain(ResourceNameEnum name, Resource resource)
 	{
-		return null;
+		_Logger.info("Adding server resource handler chain: " + name.getResourceName());
+
+		List<String> names = name.getResourceNameChain();
+		Queue<String> namesQueue = new ArrayBlockingQueue<>(names.size());
+
+		namesQueue.addAll(names);
+
+		Resource parent = this.coapServer.getRoot();
+		if (parent==null) {
+			parent = new CoapResource(namesQueue.poll());
+			this.coapServer.add(parent);
+		}
+
+		while (!namesQueue.isEmpty()) {
+			String resourceName = namesQueue.poll();
+			Resource next = parent.getChild(resourceName);
+
+			if (next==null) {
+				if (namesQueue.isEmpty()) {
+					next = resource;
+					next.setName(resourceName);
+				} else {
+					next = new CoapResource(resourceName);
+				}
+				parent.add(next);
+			}
+
+			parent = next;
+		}
+
+		return this.coapServer.getRoot();
 	}
 	
 	private void initServer(ResourceNameEnum ...resources)
@@ -146,5 +183,38 @@ public class CoapServerGateway
 		);
 
 		this.coapServer = new CoapServer(port);
+
+		initDefaultResources();
+	}
+
+	private void initDefaultResources()
+	{
+		// initialize pre-defined resources
+		// GetActuatorCommandResourceHandler getActuatorCmdResourceHandler =
+		// 	new GetActuatorCommandResourceHandler(
+		// 		ResourceNameEnum.CDA_ACTUATOR_CMD_RESOURCE.getResourceType());
+		
+		// if (this.dataMsgListener != null) {
+		// 	this.dataMsgListener.setActuatorDataListener(null, getActuatorCmdResourceHandler);
+		// }
+		
+		// addResource(ResourceNameEnum.CDA_ACTUATOR_CMD_RESOURCE, null, getActuatorCmdResourceHandler);
+		
+		// UpdateTelemetryResourceHandler updateTelemetryResourceHandler =
+		// 	new UpdateTelemetryResourceHandler(
+		// 		ResourceNameEnum.CDA_SENSOR_MSG_RESOURCE.getResourceType());
+		
+		// updateTelemetryResourceHandler.setDataMessageListener(this.dataMsgListener);
+		
+		// addResource(
+		// 	ResourceNameEnum.CDA_SENSOR_MSG_RESOURCE, null,	updateTelemetryResourceHandler);
+		
+		UpdateSystemPerformanceResourceHandler updateSystemPerformanceResourceHandler =
+			new UpdateSystemPerformanceResourceHandler();
+		
+		updateSystemPerformanceResourceHandler.setDataMessageListener(this.dataMsgListener);
+		
+		addResource(ResourceNameEnum.CDA_SYSTEM_PERF_MSG_RESOURCE,
+			null, updateSystemPerformanceResourceHandler);
 	}
 }
