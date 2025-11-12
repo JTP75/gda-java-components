@@ -68,7 +68,7 @@ public class GenericCoapResourceHandler extends CoapResource
 	{
 		context.accept();
 		_Logger.log(Level.INFO, "Received DELETE request (generic). Ignoring");
-		context.respond(ResponseCode.CONTINUE);
+		context.respond(ResponseCode.CONTINUE, "Generic handler. No DELETE action taken: " + super.getName());
 	}
 	
 	@Override
@@ -76,7 +76,7 @@ public class GenericCoapResourceHandler extends CoapResource
 	{
 		context.accept();
 		_Logger.log(Level.INFO, "Received GET request (generic). Ignoring");
-		context.respond(ResponseCode.CONTINUE);
+		context.respond(ResponseCode.CONTINUE, "Generic handler. No GET action taken: " + super.getName());
 	}
 	
 	@Override
@@ -84,7 +84,7 @@ public class GenericCoapResourceHandler extends CoapResource
 	{
 		context.accept();
 		_Logger.log(Level.INFO, "Received POST request (generic). Ignoring");
-		context.respond(ResponseCode.CONTINUE);
+		context.respond(ResponseCode.CONTINUE, "Generic handler. No POST action taken: " + super.getName());
 	}
 	
 	@Override
@@ -92,7 +92,7 @@ public class GenericCoapResourceHandler extends CoapResource
 	{
 		context.accept();
 		_Logger.log(Level.INFO, "Received PUT request (generic). Ignoring");
-		context.respond(ResponseCode.CONTINUE);
+		context.respond(ResponseCode.CONTINUE, "Generic handler. No PUT action taken: " + super.getName());
 	}
 	
 	public void setDataMessageListener(IDataMessageListener listener)

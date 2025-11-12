@@ -195,6 +195,9 @@ public class DeviceDataManager extends JedisPubSub implements IDataMessageListen
 	
 	public void setActuatorDataListener(String name, IActuatorDataListener listener)
 	{
+		if (listener != null) {
+			this.actuatorDataListener = listener;
+		}
 	}
 	
 	public void startManager()

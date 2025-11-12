@@ -112,7 +112,7 @@ public class CoapClientHandlersTest
     }
 	
 	/**
-	 * java -jar cf-client/target/cf-client-3.10.0.jar --method=PUT coap://localhost:5683/PIOT/ConstrainedDevice/SensorfMsg --payload "{"cpuUtilization": 1.0, "diskUtilization": 2.0, "memUtilization": 3.0 }"
+	 * java -jar cf-client/target/cf-client-3.10.0.jar --method=PUT coap://localhost:5683/PIOT/ConstrainedDevice/SensorfMsg --payload "{ "value": 25 }"
 	 */
 	@Test
     public void testTelemetryPutMessage()

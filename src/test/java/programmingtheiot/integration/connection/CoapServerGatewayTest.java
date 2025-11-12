@@ -26,6 +26,9 @@ import programmingtheiot.common.ConfigConst;
 import programmingtheiot.common.DefaultDataMessageListener;
 import programmingtheiot.common.IDataMessageListener;
 import programmingtheiot.common.ResourceNameEnum;
+import programmingtheiot.data.DataUtil;
+import programmingtheiot.data.SensorData;
+import programmingtheiot.data.SystemPerformanceData;
 import programmingtheiot.gda.connection.*;
 
 /**
@@ -84,7 +87,8 @@ public class CoapServerGatewayTest
 			String url =
 				ConfigConst.DEFAULT_COAP_PROTOCOL + "://" + ConfigConst.DEFAULT_HOST + ":" + ConfigConst.DEFAULT_COAP_PORT;
 			
-			this.csg = new CoapServerGateway(new DefaultDataMessageListener());
+			this.dml = new DefaultDataMessageListener();
+			this.csg = new CoapServerGateway(dml);
 			assertTrue(this.csg.startServer());
 
 			Thread.sleep(5000);
@@ -112,10 +116,23 @@ public class CoapServerGatewayTest
 			clientConn.setURI(
 				url + "/" + ConfigConst.PRODUCT_NAME + "/" + ConfigConst.CONSTRAINED_DEVICE);
 			clientConn.get();
+
+			SystemPerformanceData spd = new SystemPerformanceData();
+			spd.setCpuUtilization(42.0f);
+			spd.setMemoryUtilization(4.2f);
+			String spdJson = DataUtil.getInstance().systemPerformanceDataToJson(spd);
 			
 			clientConn.setURI(
 				url + "/" + ResourceNameEnum.CDA_SYSTEM_PERF_MSG_RESOURCE.getResourceName());
-			clientConn.get();
+			clientConn.put(spdJson, 0);
+			
+			SensorData sd = new SensorData();
+			sd.setValue(25);
+			String sdJson = DataUtil.getInstance().sensorDataToJson(sd);
+
+			clientConn.setURI(
+				url + "/" + ResourceNameEnum.CDA_SENSOR_MSG_RESOURCE.getResourceName());
+			clientConn.put(sdJson, 0);
 			
 			// wait for 2 min's (so other app tests can run)
 			// Thread.sleep(120000L);
