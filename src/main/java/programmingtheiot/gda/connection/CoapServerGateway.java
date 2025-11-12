@@ -32,7 +32,9 @@ import programmingtheiot.common.ConfigUtil;
 import programmingtheiot.common.IDataMessageListener;
 import programmingtheiot.common.ResourceNameEnum;
 import programmingtheiot.gda.connection.handlers.GenericCoapResourceHandler;
+import programmingtheiot.gda.connection.handlers.GetActuatorCommandResourceHandler;
 import programmingtheiot.gda.connection.handlers.UpdateSystemPerformanceResourceHandler;
+import programmingtheiot.gda.connection.handlers.UpdateTelemetryResourceHandler;
 
 /**
  * config init for californium
@@ -190,24 +192,22 @@ public class CoapServerGateway
 	private void initDefaultResources()
 	{
 		// initialize pre-defined resources
-		// GetActuatorCommandResourceHandler getActuatorCmdResourceHandler =
-		// 	new GetActuatorCommandResourceHandler(
-		// 		ResourceNameEnum.CDA_ACTUATOR_CMD_RESOURCE.getResourceType());
+		GetActuatorCommandResourceHandler getActuatorCmdResourceHandler =
+			new GetActuatorCommandResourceHandler();
 		
-		// if (this.dataMsgListener != null) {
-		// 	this.dataMsgListener.setActuatorDataListener(null, getActuatorCmdResourceHandler);
-		// }
+		if (this.dataMsgListener != null) {
+			this.dataMsgListener.setActuatorDataListener(null, getActuatorCmdResourceHandler);
+		}
 		
-		// addResource(ResourceNameEnum.CDA_ACTUATOR_CMD_RESOURCE, null, getActuatorCmdResourceHandler);
+		addResource(ResourceNameEnum.CDA_ACTUATOR_CMD_RESOURCE, null, getActuatorCmdResourceHandler);
 		
-		// UpdateTelemetryResourceHandler updateTelemetryResourceHandler =
-		// 	new UpdateTelemetryResourceHandler(
-		// 		ResourceNameEnum.CDA_SENSOR_MSG_RESOURCE.getResourceType());
+		UpdateTelemetryResourceHandler updateTelemetryResourceHandler =
+			new UpdateTelemetryResourceHandler();
 		
-		// updateTelemetryResourceHandler.setDataMessageListener(this.dataMsgListener);
+		updateTelemetryResourceHandler.setDataMessageListener(this.dataMsgListener);
 		
-		// addResource(
-		// 	ResourceNameEnum.CDA_SENSOR_MSG_RESOURCE, null,	updateTelemetryResourceHandler);
+		addResource(
+			ResourceNameEnum.CDA_SENSOR_MSG_RESOURCE, null,	updateTelemetryResourceHandler);
 		
 		UpdateSystemPerformanceResourceHandler updateSystemPerformanceResourceHandler =
 			new UpdateSystemPerformanceResourceHandler();

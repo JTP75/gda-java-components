@@ -23,6 +23,7 @@ import programmingtheiot.common.DefaultDataMessageListener;
 import programmingtheiot.common.IDataMessageListener;
 import programmingtheiot.common.ResourceNameEnum;
 import programmingtheiot.data.DataUtil;
+import programmingtheiot.data.SensorData;
 import programmingtheiot.data.SystemPerformanceData;
 import programmingtheiot.gda.connection.*;
 
@@ -111,17 +112,27 @@ public class CoapClientHandlersTest
     }
 	
 	/**
-	 * 
+	 * java -jar cf-client/target/cf-client-3.10.0.jar --method=PUT coap://localhost:5683/PIOT/ConstrainedDevice/SensorfMsg --payload "{"cpuUtilization": 1.0, "diskUtilization": 2.0, "memUtilization": 3.0 }"
 	 */
 	@Test
     public void testTelemetryPutMessage()
     {
-        SystemPerformanceData spData = new SystemPerformanceData();
+        SensorData sData = new SensorData();
         
-        String jsonData = DataUtil.getInstance().systemPerformanceDataToJson(spData);
+        String jsonData = DataUtil.getInstance().sensorDataToJson(sData);
         
         this.coapClient.sendPutRequest(
-            ResourceNameEnum.CDA_SYSTEM_PERF_MSG_RESOURCE, null, USE_DEFAULT_RESOURCES, jsonData, DEFAULT_TIMEOUT);
+            ResourceNameEnum.CDA_SENSOR_MSG_RESOURCE, null, USE_DEFAULT_RESOURCES, jsonData, DEFAULT_TIMEOUT);
+    }
+	
+	/**
+	 * java -jar cf-client/target/cf-client-3.10.0.jar --method=GET coap://localhost:5683/PIOT/ConstrainedDevice/ActuatorCmd
+	 */
+	@Test
+    public void testActuatorGetMessage()
+    {        
+        this.coapClient.sendGetRequest(
+            ResourceNameEnum.CDA_ACTUATOR_CMD_RESOURCE, null, USE_DEFAULT_RESOURCES, DEFAULT_TIMEOUT);
     }
 	
 }
