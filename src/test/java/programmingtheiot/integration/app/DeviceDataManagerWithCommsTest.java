@@ -89,7 +89,7 @@ public class DeviceDataManagerWithCommsTest
 		devDataMgr.startManager();
 		
 		try {
-			Thread.sleep(15000L);
+			Thread.sleep(120000L);
 		} catch (InterruptedException e) {
 			// ignore
 		}

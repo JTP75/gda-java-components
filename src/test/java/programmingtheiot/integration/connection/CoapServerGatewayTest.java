@@ -147,4 +147,25 @@ public class CoapServerGatewayTest
 		}
 	}
 	
+	@Test
+	public void testRunSimpleCoapServerGateway()
+	{
+		try {
+			String url =
+				ConfigConst.DEFAULT_COAP_PROTOCOL + "://" + ConfigConst.DEFAULT_HOST + ":" + ConfigConst.DEFAULT_COAP_PORT;
+			
+			this.dml = new DefaultDataMessageListener();
+			this.csg = new CoapServerGateway(dml);
+			assertTrue(this.csg.startServer());
+			
+			
+			Thread.sleep(20000L);
+			
+			assertTrue(this.csg.stopServer());
+		} catch (Exception e) {
+			_Logger.log(Level.SEVERE, "Failed", e);
+			fail();
+		}
+	}
+	
 }

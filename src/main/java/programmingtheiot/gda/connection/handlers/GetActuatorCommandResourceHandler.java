@@ -31,6 +31,7 @@ public class GetActuatorCommandResourceHandler extends GenericCoapResourceHandle
     public GetActuatorCommandResourceHandler() {
         // uses the UpdateMsg resource
         super(ResourceNameEnum.CDA_ACTUATOR_CMD_RESOURCE.getResourceType());
+        this.actuatorData = new ActuatorData();
         super.setObservable(true);
     }
 
@@ -39,6 +40,7 @@ public class GetActuatorCommandResourceHandler extends GenericCoapResourceHandle
      */
     public GetActuatorCommandResourceHandler(ResourceNameEnum name) {
         super(name.getResourceType());
+        this.actuatorData = new ActuatorData();
         super.setObservable(true);
     }
 
@@ -47,6 +49,7 @@ public class GetActuatorCommandResourceHandler extends GenericCoapResourceHandle
      */
     public GetActuatorCommandResourceHandler(String name) {
         super(name);
+        this.actuatorData = new ActuatorData();
         super.setObservable(true);
     }
 
