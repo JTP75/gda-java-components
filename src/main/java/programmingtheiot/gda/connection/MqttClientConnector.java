@@ -154,11 +154,11 @@ public class MqttClientConnector implements IPubSubClient, MqttCallbackExtended
 	{
 		// validations
 		if (topic == null) {
-			_Logger.warning("Resource is null. Unable to publish message: " + this.brokerAddr);
+			// _Logger.warning("Resource is null. Unable to publish message: " + this.brokerAddr);
 			return false;
 		}
 		if (msg == null || msg.length() == 0) {
-			_Logger.warning("Message is null or empty. Unable to publish message: " + this.brokerAddr);
+			// _Logger.warning("Message is null or empty. Unable to publish message: " + this.brokerAddr);
 			return false;
 		}
 		if (qos<0 || qos>2) {
@@ -172,7 +172,7 @@ public class MqttClientConnector implements IPubSubClient, MqttCallbackExtended
 			this.mqttClient.publish(topic.getResourceName(), mqttMsg);
 			return true;
 		} catch  (Exception e) {
-			_Logger.severe("Failed to publish message to topic '" + topic.getResourceName() + "': " + e);
+			// _Logger.severe("Failed to publish message to topic '" + topic.getResourceName() + "': " + e);
 		}
 
 		return false;
@@ -256,7 +256,7 @@ public class MqttClientConnector implements IPubSubClient, MqttCallbackExtended
 	@Override
 	public void deliveryComplete(IMqttDeliveryToken token)
 	{
-		_Logger.info("Delivered MQTT message with ID: " + token.getMessageId());
+		// _Logger.info("Delivered MQTT message with ID: " + token.getMessageId());
 	}
 	
 	@Override

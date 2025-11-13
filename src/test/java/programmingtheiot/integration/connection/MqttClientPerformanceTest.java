@@ -142,11 +142,10 @@ public class MqttClientPerformanceTest
 		
 		assertTrue(this.mqttClient.disconnectClient());
 		
-		String msg =
-			String.format(
-				"\\n\\tTesting Publish: QoS = %s | msgs = %s | payload size = %s | start = %s | end = %s | elapsed = %s",
-				qos, maxTestRuns, payloadLen,
-				(float) startMillis / 1000, (float) endMillis / 1000, (float) elapsedMillis / 1000);
+		String msg = String.format(
+			"\\n\\tTesting Publish: QoS = %s | msgs = %s | payload size = %s | start = %s | end = %s | elapsed = %s",
+			qos, maxTestRuns, payloadLen,
+			(float) startMillis / 1000, (float) endMillis / 1000, (float) elapsedMillis / 1000);
 		
 		_Logger.info(msg);
 	}
