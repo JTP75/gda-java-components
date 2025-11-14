@@ -202,7 +202,7 @@ public class MqttClientConnectorTest
 		assertTrue(this.mqttClient.publishMessage(ResourceNameEnum.CDA_MGMT_STATUS_CMD_RESOURCE, "TEST: This is the CDA command payload.", qos));
 		
 		try {
-			Thread.sleep(60000);
+			Thread.sleep(5000);
 		} catch (Exception e) {
 			// ignore
 		}

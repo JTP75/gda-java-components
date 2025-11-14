@@ -56,8 +56,8 @@ public class MqttClientConnector implements IPubSubClient, MqttCallbackExtended
 
 	private boolean useAsyncClient = false;
 
-	// private MqttClient mqttClient = null;
-	private MqttAsyncClient mqttClient = null;
+	private MqttClient mqttClient = null;
+	// private MqttAsyncClient mqttClient = null;
 
 	private MqttConnectOptions connOptions = null;
 	private MemoryPersistence persistence = null;
@@ -101,8 +101,8 @@ public class MqttClientConnector implements IPubSubClient, MqttCallbackExtended
 	{
 		try {
 			if (this.mqttClient == null) {
-				// this.mqttClient = new MqttClient(this.brokerAddr, this.clientID, this.persistence);
-				this.mqttClient = new MqttAsyncClient(this.brokerAddr, this.clientID, this.persistence);
+				this.mqttClient = new MqttClient(this.brokerAddr, this.clientID, this.persistence);
+				// this.mqttClient = new MqttAsyncClient(this.brokerAddr, this.clientID, this.persistence);
 				this.mqttClient.setCallback(this);
 			}
 
@@ -400,6 +400,7 @@ public class MqttClientConnector implements IPubSubClient, MqttCallbackExtended
 				.getInstance()
 				.loadCertificate(this.caFileName);
 			this.connOptions.setSocketFactory(sslFactory);
+			this.connOptions.setHttpsHostnameVerificationEnabled(false);
 
 			this.port = cu.getInteger(
 				configSectionName,
