@@ -47,7 +47,7 @@ securePort     = 8883
 defaultQoS     = 0
 keepAlive      = 60
 enableAuth     = False
-enableCrypt    = True
+enableCrypt    = False
 useAsyncClient = False
 
 #
@@ -79,8 +79,8 @@ enableCrypt = False
 deviceLocationID        = gatewaydevice001
 enableLogging           = True
 pollCycleSecs           = 60
-enableMqttClient        = True
-enableCoapServer        = False
+enableMqttClient        = False
+enableCoapServer        = True
 enableCoapClient        = False
 enableCloudClient       = False
 enableSmtpClient        = False

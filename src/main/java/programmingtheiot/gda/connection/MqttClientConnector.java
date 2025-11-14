@@ -11,9 +11,14 @@
 
 package programmingtheiot.gda.connection;
 
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.ObjectInputFilter.Config;
 import java.util.Properties;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+
+import javax.net.ssl.SSLSocketFactory;
 
 import org.eclipse.paho.client.mqttv3.IMqttDeliveryToken;
 import org.eclipse.paho.client.mqttv3.MqttCallbackExtended;
@@ -29,6 +34,7 @@ import programmingtheiot.common.ConfigConst;
 import programmingtheiot.common.ConfigUtil;
 import programmingtheiot.common.IDataMessageListener;
 import programmingtheiot.common.ResourceNameEnum;
+import programmingtheiot.common.SimpleCertManagementUtil;
 
 /**
  * Shell representation of class for student implementation.
@@ -56,6 +62,11 @@ public class MqttClientConnector implements IPubSubClient, MqttCallbackExtended
 	private String protocol = ConfigConst.DEFAULT_MQTT_PROTOCOL;
 	private int port = ConfigConst.DEFAULT_MQTT_PORT;
 	private int brokerKeepAlive = ConfigConst.DEFAULT_KEEP_ALIVE;
+
+	private String caFileName = null;
+	private boolean enableEncryption = false;
+	private boolean useCleanSession = false;
+	private boolean enableAutoReconnect = true;
 	
 	// constructors
 	
@@ -66,38 +77,7 @@ public class MqttClientConnector implements IPubSubClient, MqttCallbackExtended
 	public MqttClientConnector()
 	{
 		super();
-
-		ConfigUtil configUtil = ConfigUtil.getInstance();
-
-		this.host = configUtil.getProperty(
-			ConfigConst.MQTT_GATEWAY_SERVICE,
-			ConfigConst.HOST_KEY,
-			ConfigConst.DEFAULT_HOST
-		);
-		this.port = configUtil.getInteger(
-			ConfigConst.MQTT_GATEWAY_SERVICE,
-			ConfigConst.PORT_KEY,
-			ConfigConst.DEFAULT_MQTT_PORT
-		);
-		this.brokerKeepAlive = configUtil.getInteger(
-			ConfigConst.MQTT_GATEWAY_SERVICE,
-			ConfigConst.KEEP_ALIVE_KEY,
-			ConfigConst.DEFAULT_KEEP_ALIVE
-		);
-		this.useAsyncClient = configUtil.getBoolean(
-			ConfigConst.MQTT_GATEWAY_SERVICE,
-			ConfigConst.USE_ASYNC_CLIENT_KEY
-		);
-
-		this.clientID = MqttClient.generateClientId();
-
-		this.persistence = new MemoryPersistence();
-		this.connOptions = new MqttConnectOptions();
-
-		this.connOptions.setCleanSession(false);
-		this.connOptions.setAutomaticReconnect(true);
-
-		this.brokerAddr = this.protocol + "://" + this.host + ":" + this.port;
+		initClientParameters(ConfigConst.MQTT_GATEWAY_SERVICE);
 	}
 	
 	
@@ -276,7 +256,38 @@ public class MqttClientConnector implements IPubSubClient, MqttCallbackExtended
 	 */
 	private void initClientParameters(String configSectionName)
 	{
-		// TODO: implement this
+		ConfigUtil cu = ConfigUtil.getInstance();
+
+		// NOTE this is using sync client
+
+		this.host = cu.getProperty(configSectionName, ConfigConst.HOST_KEY, ConfigConst.DEFAULT_HOST);
+		this.port = cu.getInteger(configSectionName, ConfigConst.PORT_KEY, ConfigConst.DEFAULT_MQTT_SECURE_PORT);
+		this.brokerKeepAlive = cu.getInteger(configSectionName, ConfigConst.KEEP_ALIVE_KEY, ConfigConst.DEFAULT_KEEP_ALIVE);
+		this.enableEncryption = cu.getBoolean(configSectionName, ConfigConst.ENABLE_CRYPT_KEY);
+		this.caFileName = cu.getProperty(configSectionName, ConfigConst.CERT_FILE_KEY, null);
+		// this.useAsyncClient = cu.getProperty(ConfigConst.MQTT_GATEWAY_SERVICE, ConfigConst.USE_ASYNC_CLIENT_KEY);
+		this.clientID = cu.getProperty(ConfigConst.GATEWAY_DEVICE, ConfigConst.DEVICE_LOCATION_ID_KEY, MqttClient.generateClientId());
+		
+		this.persistence = new MemoryPersistence();
+		this.connOptions = new MqttConnectOptions();
+
+		this.connOptions.setKeepAliveInterval(this.brokerKeepAlive);
+		this.connOptions.setCleanSession(this.useCleanSession);
+		this.connOptions.setAutomaticReconnect(this.enableAutoReconnect);
+		
+		try {
+			if (this.enableEncryption) { initSecureConnectionParameters(configSectionName); }
+			if (cu.hasProperty(configSectionName, ConfigConst.CRED_FILE_KEY)) {
+				initCredentialConnectionParameters(configSectionName);
+			}
+		} catch (Exception e) {
+			_Logger.log(Level.SEVERE, "Init secure connection failed:", e);
+			this.enableEncryption = false;
+		}
+
+		this.brokerAddr  = this.protocol + "://" + this.host + ":" + this.port;
+
+		_Logger.info("Client initialized: " + this.brokerAddr);
 	}
 	
 	/**
@@ -287,7 +298,21 @@ public class MqttClientConnector implements IPubSubClient, MqttCallbackExtended
 	 */
 	private void initCredentialConnectionParameters(String configSectionName)
 	{
-		// TODO: implement this
+		ConfigUtil cu = ConfigUtil.getInstance();
+		try {
+			_Logger.info("Checking credential file...");
+			Properties props = cu.getCredentials(configSectionName);
+			if (props!=null) {
+				this.connOptions.setUserName(cu.getProperty(ConfigConst.USER_NAME_TOKEN_KEY, ""));
+				this.connOptions.setPassword(cu.getProperty(ConfigConst.USER_AUTH_TOKEN_KEY, "").toCharArray());
+				_Logger.info("Credentials set");
+			} else {
+				_Logger.warning("No credentials set");
+			}
+		} catch (Exception e) {
+			_Logger.log(Level.SEVERE, "No credential file.");
+			throw e;
+		}
 	}
 	
 	/**
@@ -295,9 +320,42 @@ public class MqttClientConnector implements IPubSubClient, MqttCallbackExtended
 	 * 
 	 * @param configSectionName The name of the configuration section to use for
 	 * the MQTT client configuration parameters.
+	 * @throws Exception if file not found or path is null
 	 */
-	private void initSecureConnectionParameters(String configSectionName)
+	private void initSecureConnectionParameters(String configSectionName) throws Exception
 	{
-		// TODO: implement this
+		ConfigUtil cu = ConfigUtil.getInstance();
+
+		try {
+			_Logger.info("Configuring TLS...");
+			if (this.caFileName!=null) {
+				File file = new File(this.caFileName);
+				if (file.exists()) {
+					_Logger.info("Found cred file at " + this.caFileName);
+				} else {
+					_Logger.info("Cred file does not exist");
+					throw new FileNotFoundException(this.caFileName + "not found");
+				}
+			} else {
+				_Logger.severe("No cred file provided");
+				throw new Exception("No cred file provided");
+			}
+
+			SSLSocketFactory sslFactory = SimpleCertManagementUtil
+				.getInstance()
+				.loadCertificate(this.caFileName);
+			this.connOptions.setSocketFactory(sslFactory);
+
+			this.port = cu.getInteger(
+				configSectionName,
+				ConfigConst.SECURE_PORT_KEY,
+				ConfigConst.DEFAULT_MQTT_SECURE_PORT
+			);
+
+			this.protocol = ConfigConst.DEFAULT_MQTT_SECURE_PROTOCOL;
+		} catch (Exception e) {
+			_Logger.log(Level.SEVERE, "Secure MQTT Connection failed: ", e);
+			throw e;
+		}
 	}
 }

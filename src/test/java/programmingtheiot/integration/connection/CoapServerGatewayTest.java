@@ -151,15 +151,13 @@ public class CoapServerGatewayTest
 	public void testRunSimpleCoapServerGateway()
 	{
 		try {
-			String url =
-				ConfigConst.DEFAULT_COAP_PROTOCOL + "://" + ConfigConst.DEFAULT_HOST + ":" + ConfigConst.DEFAULT_COAP_PORT;
-			
 			this.dml = new DefaultDataMessageListener();
 			this.csg = new CoapServerGateway(dml);
 			assertTrue(this.csg.startServer());
+
+			// TODO this is broken
 			
-			
-			Thread.sleep(20000L);
+			Thread.sleep(60000L);
 			
 			assertTrue(this.csg.stopServer());
 		} catch (Exception e) {
