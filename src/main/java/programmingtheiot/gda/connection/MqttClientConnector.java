@@ -21,6 +21,7 @@ import java.util.logging.Logger;
 import javax.net.ssl.SSLSocketFactory;
 
 import org.eclipse.paho.client.mqttv3.IMqttDeliveryToken;
+import org.eclipse.paho.client.mqttv3.MqttAsyncClient;
 import org.eclipse.paho.client.mqttv3.MqttCallbackExtended;
 import org.eclipse.paho.client.mqttv3.MqttClient;
 import org.eclipse.paho.client.mqttv3.MqttConnectOptions;
@@ -35,6 +36,10 @@ import programmingtheiot.common.ConfigUtil;
 import programmingtheiot.common.IDataMessageListener;
 import programmingtheiot.common.ResourceNameEnum;
 import programmingtheiot.common.SimpleCertManagementUtil;
+import programmingtheiot.data.ActuatorData;
+import programmingtheiot.data.DataUtil;
+import programmingtheiot.data.SensorData;
+import programmingtheiot.data.SystemPerformanceData;
 
 /**
  * Shell representation of class for student implementation.
@@ -51,7 +56,9 @@ public class MqttClientConnector implements IPubSubClient, MqttCallbackExtended
 
 	private boolean useAsyncClient = false;
 
-	private MqttClient mqttClient = null;
+	// private MqttClient mqttClient = null;
+	private MqttAsyncClient mqttClient = null;
+
 	private MqttConnectOptions connOptions = null;
 	private MemoryPersistence persistence = null;
 	private IDataMessageListener dataMsgListener = null;
@@ -79,6 +86,12 @@ public class MqttClientConnector implements IPubSubClient, MqttCallbackExtended
 		super();
 		initClientParameters(ConfigConst.MQTT_GATEWAY_SERVICE);
 	}
+
+	public MqttClientConnector(boolean useAsync)
+	{
+		super();
+		initClientParameters(ConfigConst.MQTT_GATEWAY_SERVICE);
+	}
 	
 	
 	// public methods
@@ -88,7 +101,8 @@ public class MqttClientConnector implements IPubSubClient, MqttCallbackExtended
 	{
 		try {
 			if (this.mqttClient == null) {
-				this.mqttClient = new MqttClient(this.brokerAddr, this.clientID, this.persistence);
+				// this.mqttClient = new MqttClient(this.brokerAddr, this.clientID, this.persistence);
+				this.mqttClient = new MqttAsyncClient(this.brokerAddr, this.clientID, this.persistence);
 				this.mqttClient.setCallback(this);
 			}
 
@@ -225,6 +239,12 @@ public class MqttClientConnector implements IPubSubClient, MqttCallbackExtended
 	public void connectComplete(boolean reconnect, String serverURI)
 	{
 		_Logger.info("MQTT connection successful: (is reconnect = " + reconnect + "). Broker: " + serverURI);
+
+		int qos = 1;
+		
+		this.subscribeToTopic(ResourceNameEnum.CDA_ACTUATOR_RESPONSE_RESOURCE, qos);
+		this.subscribeToTopic(ResourceNameEnum.CDA_SENSOR_MSG_RESOURCE, qos);
+		this.subscribeToTopic(ResourceNameEnum.CDA_SYSTEM_PERF_MSG_RESOURCE, qos);
 	}
 
 	@Override
@@ -243,9 +263,62 @@ public class MqttClientConnector implements IPubSubClient, MqttCallbackExtended
 	public void messageArrived(String topic, MqttMessage msg) throws Exception
 	{
 		_Logger.info("MQTT message arrived on topic: '" + topic + "'");
+
+		// try actuator response data (yes this is not great practice but idk java)
+		try {
+			ActuatorData ad = DataUtil.getInstance()
+				.jsonToActuatorData(new String(msg.getPayload()));
+
+			_Logger.info("Received actuator response");
+			if (this.dataMsgListener!=null) {
+				this.dataMsgListener.handleActuatorCommandResponse(
+					ResourceNameEnum.CDA_ACTUATOR_RESPONSE_RESOURCE, ad
+				);
+			}
+
+			return;
+		} catch (Exception e) {
+			// ignore
+		}
+
+		// try sensor data
+		try {
+			SensorData sd = DataUtil.getInstance()
+				.jsonToSensorData(new String(msg.getPayload()));
+
+			_Logger.info("Received sensor data");
+			if (this.dataMsgListener!=null) {
+				this.dataMsgListener.handleSensorMessage(
+					ResourceNameEnum.CDA_ACTUATOR_RESPONSE_RESOURCE, sd
+				);
+			}
+
+			return;
+		} catch (Exception e) {
+			// ignore
+		}
+
+		// try sysperf data
+		try {
+			SystemPerformanceData spd = DataUtil.getInstance()
+				.jsonToSystemPerformanceData(new String(msg.getPayload()));
+
+			_Logger.info("Received system performance data");
+			if (this.dataMsgListener!=null) {
+				this.dataMsgListener.handleSystemPerformanceMessage(
+					ResourceNameEnum.CDA_ACTUATOR_RESPONSE_RESOURCE, spd
+				);
+			}
+
+			return;
+		} catch (Exception e) {
+			// ignore
+		}
+
+		_Logger.severe("Invalid message payload");
+		throw new Exception("Invalid message payload");
 	}
 
-	
 	// private methods
 	
 	/**
