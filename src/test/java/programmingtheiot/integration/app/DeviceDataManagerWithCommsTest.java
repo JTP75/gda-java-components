@@ -87,6 +87,7 @@ public class DeviceDataManagerWithCommsTest
 	{
 		DeviceDataManager devDataMgr = new DeviceDataManager();
 		devDataMgr.startManager();
+		try { Thread.sleep(1000L); } catch (InterruptedException e) {}
 		
 		try {
 			Thread.sleep(120000L);
@@ -95,19 +96,25 @@ public class DeviceDataManagerWithCommsTest
 		}
 		
 		devDataMgr.stopManager();
+		try { Thread.sleep(1000L); } catch (InterruptedException e) {}
 	}
 	
 	/**
 	 * Test method for running the DeviceDataManager with MQTT.
+	 * 
+	 * @note this test will not work if mqttClient and devDataMgr.mqttClient
+	 * 		 have the same clientID
 	 */
 	@Test
 	public void testStartAndStopManagerWithMqtt()
 	{
 		DeviceDataManager devDataMgr = new DeviceDataManager();
 		devDataMgr.startManager();
+		try { Thread.sleep(1000L); } catch (InterruptedException e) {}
 		
 		IPubSubClient mqttClient = new MqttClientConnector();
 		mqttClient.connectClient();
+		try { Thread.sleep(1000L); } catch (InterruptedException e) {}
 		
 		SensorData sd = new SensorData();
 		sd.setName("Some Sensor");
@@ -125,7 +132,10 @@ public class DeviceDataManagerWithCommsTest
 		}
 		
 		mqttClient.disconnectClient();
+		try { Thread.sleep(1000L); } catch (InterruptedException e) {}
+
 		devDataMgr.stopManager();
+		try { Thread.sleep(1000L); } catch (InterruptedException e) {}
 	}
 	
 	/*

@@ -76,16 +76,22 @@ enableCrypt = False
 # GDA specific configuration information
 #
 [GatewayDevice]
-deviceLocationID        = gatewaydevice001
-enableLogging           = True
-pollCycleSecs           = 60
-enableMqttClient        = False
-enableCoapServer        = True
-enableCoapClient        = False
-enableCloudClient       = False
-enableSmtpClient        = False
-enablePersistenceClient = False
-enableSystemPerformance = True
-testGdaDataPath         = /tmp/gda-data
-testCdaDataPath         = /tmp/cda-data
-testEmptyApp            = False
+deviceLocationID                = gatewaydevice001
+enableLogging                   = True
+pollCycleSecs                   = 60
+enableMqttClient                = True
+enableCoapServer                = False
+enableCoapClient                = False
+enableCloudClient               = False
+enableSmtpClient                = False
+enablePersistenceClient         = False
+enableSystemPerformance         = True
+testGdaDataPath                 = /tmp/gda-data
+testCdaDataPath                 = /tmp/cda-data
+testEmptyApp                    = False
+
+handleHumidityChangeOnDevice    = True
+humidityMaxTimePastThreshold    = 10
+nominalHumiditySetting          = 40.0
+triggerHumidifierFloor          = 30.0
+triggerHumidifierCeiling        = 50.0

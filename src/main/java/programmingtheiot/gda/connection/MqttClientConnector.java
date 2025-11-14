@@ -264,59 +264,41 @@ public class MqttClientConnector implements IPubSubClient, MqttCallbackExtended
 	{
 		_Logger.info("MQTT message arrived on topic: '" + topic + "'");
 
-		// try actuator response data (yes this is not great practice but idk java)
+		ResourceNameEnum resource = getResourceFromTopic(topic);
+
 		try {
-			ActuatorData ad = DataUtil.getInstance()
-				.jsonToActuatorData(new String(msg.getPayload()));
+			switch (resource) {
+				case CDA_ACTUATOR_RESPONSE_RESOURCE:
+					ActuatorData ad = DataUtil.getInstance()
+						.jsonToActuatorData(new String(msg.getPayload()));
+					this.dataMsgListener.handleActuatorCommandResponse(
+						ResourceNameEnum.CDA_ACTUATOR_RESPONSE_RESOURCE, ad
+					);
+					return;
 
-			_Logger.info("Received actuator response");
-			if (this.dataMsgListener!=null) {
-				this.dataMsgListener.handleActuatorCommandResponse(
-					ResourceNameEnum.CDA_ACTUATOR_RESPONSE_RESOURCE, ad
-				);
+				case CDA_SENSOR_MSG_RESOURCE:
+					SensorData sd = DataUtil.getInstance()
+						.jsonToSensorData(new String(msg.getPayload()));
+					this.dataMsgListener.handleSensorMessage(
+						ResourceNameEnum.CDA_ACTUATOR_RESPONSE_RESOURCE, sd
+					);
+					return;
+			
+				case CDA_SYSTEM_PERF_MSG_RESOURCE:
+					SystemPerformanceData spd = DataUtil.getInstance()
+						.jsonToSystemPerformanceData(new String(msg.getPayload()));
+					this.dataMsgListener.handleSystemPerformanceMessage(
+						ResourceNameEnum.CDA_ACTUATOR_RESPONSE_RESOURCE, spd
+					);
+					return;
+			
+				default:
+					break;
 			}
-
-			return;
 		} catch (Exception e) {
-			// ignore
+			_Logger.severe("Invalid message payload");
+			throw new Exception("Invalid message payload");
 		}
-
-		// try sensor data
-		try {
-			SensorData sd = DataUtil.getInstance()
-				.jsonToSensorData(new String(msg.getPayload()));
-
-			_Logger.info("Received sensor data");
-			if (this.dataMsgListener!=null) {
-				this.dataMsgListener.handleSensorMessage(
-					ResourceNameEnum.CDA_ACTUATOR_RESPONSE_RESOURCE, sd
-				);
-			}
-
-			return;
-		} catch (Exception e) {
-			// ignore
-		}
-
-		// try sysperf data
-		try {
-			SystemPerformanceData spd = DataUtil.getInstance()
-				.jsonToSystemPerformanceData(new String(msg.getPayload()));
-
-			_Logger.info("Received system performance data");
-			if (this.dataMsgListener!=null) {
-				this.dataMsgListener.handleSystemPerformanceMessage(
-					ResourceNameEnum.CDA_ACTUATOR_RESPONSE_RESOURCE, spd
-				);
-			}
-
-			return;
-		} catch (Exception e) {
-			// ignore
-		}
-
-		_Logger.severe("Invalid message payload");
-		throw new Exception("Invalid message payload");
 	}
 
 	// private methods
@@ -430,5 +412,15 @@ public class MqttClientConnector implements IPubSubClient, MqttCallbackExtended
 			_Logger.log(Level.SEVERE, "Secure MQTT Connection failed: ", e);
 			throw e;
 		}
+	}
+	
+	private ResourceNameEnum getResourceFromTopic(String topic)
+	{
+		for (ResourceNameEnum resource : ResourceNameEnum.values()) {
+			if (topic.equals(resource.getResourceName())) {
+				return resource;
+			}
+		}
+		return ResourceNameEnum.CDA_SENSOR_MSG_RESOURCE;
 	}
 }

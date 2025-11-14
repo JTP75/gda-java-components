@@ -18,6 +18,9 @@ import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
+import programmingtheiot.common.ConfigConst;
+import programmingtheiot.common.ResourceNameEnum;
+import programmingtheiot.data.SensorData;
 import programmingtheiot.gda.app.DeviceDataManager;
 
 /**
@@ -91,6 +94,71 @@ public class DeviceDataManagerNoCommsTest
 		} catch (InterruptedException e) {
 			// ignore
 		}
+		
+		devDataMgr.stopManager();
+	}
+	
+	/**
+	 * Test method for running the DeviceDataManager.
+	 */
+	@Test
+	public void testStartAndStopManagerInjNoComms()
+	{
+		DeviceDataManager devDataMgr = new DeviceDataManager();
+		
+		devDataMgr.startManager();
+
+		SensorData sd1, sd2;
+
+		sd1 = new SensorData();
+		sd1.setTypeID(ConfigConst.HUMIDITY_SENSOR_TYPE);
+		sd1.setValue(60.0f);
+
+		sd2 = new SensorData();
+		sd2.setTypeID(ConfigConst.HUMIDITY_SENSOR_TYPE);
+		sd2.setValue(45.0f);
+
+		devDataMgr.handleSensorMessage(ResourceNameEnum.CDA_SENSOR_MSG_RESOURCE, sd1);
+		try { Thread.sleep(4000L); } catch (InterruptedException e) {}
+
+		sd1 = new SensorData();
+		sd1.setTypeID(ConfigConst.HUMIDITY_SENSOR_TYPE);
+		sd1.setValue(60.0f);
+
+		sd2 = new SensorData();
+		sd2.setTypeID(ConfigConst.HUMIDITY_SENSOR_TYPE);
+		sd2.setValue(45.0f);
+
+		devDataMgr.handleSensorMessage(ResourceNameEnum.CDA_SENSOR_MSG_RESOURCE, sd1);
+		try { Thread.sleep(4000L); } catch (InterruptedException e) {}
+
+		sd1 = new SensorData();
+		sd1.setTypeID(ConfigConst.HUMIDITY_SENSOR_TYPE);
+		sd1.setValue(60.0f);
+
+		sd2 = new SensorData();
+		sd2.setTypeID(ConfigConst.HUMIDITY_SENSOR_TYPE);
+		sd2.setValue(45.0f);
+
+		devDataMgr.handleSensorMessage(ResourceNameEnum.CDA_SENSOR_MSG_RESOURCE, sd1);
+		try { Thread.sleep(4000L); } catch (InterruptedException e) {}
+
+		sd1 = new SensorData();
+		sd1.setTypeID(ConfigConst.HUMIDITY_SENSOR_TYPE);
+		sd1.setValue(60.0f);
+
+		sd2 = new SensorData();
+		sd2.setTypeID(ConfigConst.HUMIDITY_SENSOR_TYPE);
+		sd2.setValue(45.0f);
+
+		devDataMgr.handleSensorMessage(ResourceNameEnum.CDA_SENSOR_MSG_RESOURCE, sd1);
+		try { Thread.sleep(4000L); } catch (InterruptedException e) {}
+		
+		// try {
+		// 	Thread.sleep(60000L);
+		// } catch (InterruptedException e) {
+		// 	// ignore
+		// }
 		
 		devDataMgr.stopManager();
 	}
