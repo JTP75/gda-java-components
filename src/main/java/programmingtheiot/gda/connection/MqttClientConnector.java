@@ -21,6 +21,7 @@ import java.util.logging.Logger;
 import javax.net.ssl.SSLSocketFactory;
 
 import org.eclipse.paho.client.mqttv3.IMqttDeliveryToken;
+import org.eclipse.paho.client.mqttv3.IMqttMessageListener;
 import org.eclipse.paho.client.mqttv3.MqttAsyncClient;
 import org.eclipse.paho.client.mqttv3.MqttCallbackExtended;
 import org.eclipse.paho.client.mqttv3.MqttClient;
@@ -45,6 +46,7 @@ import programmingtheiot.data.SystemPerformanceData;
  * Shell representation of class for student implementation.
  * 
  */
+@SuppressWarnings("unused")
 public class MqttClientConnector implements IPubSubClient, MqttCallbackExtended
 {
 	// static
@@ -208,9 +210,15 @@ public class MqttClientConnector implements IPubSubClient, MqttCallbackExtended
 
 		int qos = 1;
 		
-		this.subscribeToTopic(ResourceNameEnum.CDA_ACTUATOR_RESPONSE_RESOURCE, qos);
-		this.subscribeToTopic(ResourceNameEnum.CDA_SENSOR_MSG_RESOURCE, qos);
-		this.subscribeToTopic(ResourceNameEnum.CDA_SYSTEM_PERF_MSG_RESOURCE, qos);
+		if (!this.useCloudGatewayConfig) {
+			this.subscribeToTopic(ResourceNameEnum.CDA_ACTUATOR_RESPONSE_RESOURCE, qos);
+			this.subscribeToTopic(ResourceNameEnum.CDA_SENSOR_MSG_RESOURCE, qos);
+			this.subscribeToTopic(ResourceNameEnum.CDA_SYSTEM_PERF_MSG_RESOURCE, qos);
+		}
+
+		if (this.connectionListener != null) {
+			this.connectionListener.onConnect();
+		}
 	}
 
 	@Override
@@ -314,7 +322,7 @@ public class MqttClientConnector implements IPubSubClient, MqttCallbackExtended
 	 * @param qos
 	 * @return
 	 */
-	protected boolean subscribeToTopic(String topic, int qos, IConnectionListener listener)
+	protected boolean subscribeToTopic(String topic, int qos, IMqttMessageListener listener)
 	{
 		// validations
 		if (topic == null) {
@@ -331,8 +339,13 @@ public class MqttClientConnector implements IPubSubClient, MqttCallbackExtended
 
 		// subscribe
 		try {
-			this.mqttClient.subscribe(topic, qos);
-			_Logger.info("Successfully subscribed to topic: " + topic);
+			if (listener != null) {
+				this.mqttClient.subscribe(topic, qos, listener);
+				_Logger.info("Successfully subscribed to topic with listener: " + topic);
+			} else {
+				this.mqttClient.subscribe(topic, qos);
+				_Logger.info("Successfully subscribed to topic: " + topic);
+			}
 			return true;
 		} catch (Exception e) {
 			_Logger.severe("Failed to subscribe to topic '" + topic + "': " + e);
