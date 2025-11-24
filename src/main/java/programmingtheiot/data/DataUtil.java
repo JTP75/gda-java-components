@@ -63,10 +63,24 @@ public class DataUtil
 	{
 		return gson.toJson(actuatorData);
 	}
+
+	public String actuatorDataToTVJson(ActuatorData data)
+	{
+		if (data == null) { return gson.toJson(null); }
+		TimeAndValuePayloadData tvd = new TimeAndValuePayloadData(data);
+		return gson.toJson(tvd);
+	}
 	
 	public String sensorDataToJson(SensorData sensorData)
 	{
 		return gson.toJson(sensorData);
+	}
+
+	public String sensorDataToTVJson(SensorData data)
+	{
+		if (data == null) { return gson.toJson(null); }
+		TimeAndValuePayloadData tvd = new TimeAndValuePayloadData(data);
+		return gson.toJson(tvd);
 	}
 	
 	public String systemPerformanceDataToJson(SystemPerformanceData sysPerfData)
