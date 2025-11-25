@@ -11,8 +11,8 @@
 # Cloud client configuration information
 #
 [Cloud.GatewayService]
-credFile       = ./cred/PiotCloudCred.props
-certFile       = ./cert/PiotCloudCert.pem
+credFile       = ./cred/UbidotsCloudCred.props
+certFile       = ./cert/UbidotsCloudCert.pem
 host           = industrial.api.ubidots.com
 port           = 1883
 securePort     = 8883
@@ -82,7 +82,7 @@ pollCycleSecs                   = 60
 enableMqttClient                = True
 enableCoapServer                = False
 enableCoapClient                = False
-enableCloudClient               = False
+enableCloudClient               = True
 enableSmtpClient                = False
 enablePersistenceClient         = False
 enableSystemPerformance         = True

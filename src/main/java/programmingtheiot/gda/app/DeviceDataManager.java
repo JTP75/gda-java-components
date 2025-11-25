@@ -16,6 +16,7 @@ import java.time.temporal.ChronoUnit;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import kotlin.NotImplementedError;
 import programmingtheiot.common.ConfigConst;
 import programmingtheiot.common.ConfigUtil;
 import programmingtheiot.common.IActuatorDataListener;
@@ -30,6 +31,7 @@ import programmingtheiot.data.SystemPerformanceData;
 
 import programmingtheiot.gda.connection.CloudClientConnector;
 import programmingtheiot.gda.connection.CoapServerGateway;
+import programmingtheiot.gda.connection.ICloudClient;
 import programmingtheiot.gda.connection.IPersistenceClient;
 import programmingtheiot.gda.connection.IPubSubClient;
 import programmingtheiot.gda.connection.IRequestResponseClient;
@@ -43,6 +45,7 @@ import redis.clients.jedis.JedisPubSub;
  * Shell representation of class for student implementation.
  *
  */
+@SuppressWarnings("unused")
 public class DeviceDataManager extends JedisPubSub implements IDataMessageListener
 {
 	// static
@@ -61,7 +64,7 @@ public class DeviceDataManager extends JedisPubSub implements IDataMessageListen
 	
 	private IActuatorDataListener actuatorDataListener = null;
 	private IPubSubClient mqttClient = null;
-	private IPubSubClient cloudClient = null;
+	private ICloudClient cloudClient = null;
 	private IPersistenceClient persistenceClient = null;
 	private IRequestResponseClient smtpClient = null;
 	private CoapServerGateway coapServer = null;
@@ -123,6 +126,12 @@ public class DeviceDataManager extends JedisPubSub implements IDataMessageListen
 			_Logger.info("CoAP server enabled");
 			this.coapServer.setDataMessageListener(this);
 		}
+
+		if (this.enableCloudClient) {
+			this.cloudClient = new CloudClientConnector();
+			_Logger.info("Cloud client enabled");
+			this.cloudClient.setDataMessageListener(this);
+		}
 		
 		initConnections();
 	}
@@ -159,6 +168,29 @@ public class DeviceDataManager extends JedisPubSub implements IDataMessageListen
 	@Override
 	public boolean handleActuatorCommandRequest(ResourceNameEnum resourceName, ActuatorData data)
 	{
+		if (data != null) {
+			_Logger.log(
+				Level.INFO,
+				"Actuator request received: {0}. Message: {1}",
+				new Object[] {
+					resourceName.getResourceName(), 
+					Integer.valueOf(
+						data.getCommand()
+					)
+				}
+			);
+
+			if (data.hasError()) { 
+				_Logger.warning("Error flag in Actuator Data"); 
+			}
+
+			int qos = ConfigConst.DEFAULT_QOS;
+			
+			// TODO optionally preprocess actuator data
+
+			this.sendActuatorCommandtoCda(resourceName, data);
+			return true;
+		}
 		return false;
 	}
 
@@ -188,7 +220,17 @@ public class DeviceDataManager extends JedisPubSub implements IDataMessageListen
 			}
 
 			handleIncomingMessage(resourceName, data);
-			handleUpstreamTransmission(resourceName, jsonData, qos);
+
+			if (this.cloudClient == null) {
+				_Logger.warning("CSP is null");
+				return false;
+			}
+
+			if (!this.cloudClient.sendEdgeDataToCloud(resourceName, data)) {
+				_Logger.severe("Failed to send data to CSP");
+				return false;
+			}
+			// handleUpstreamTransmission(resourceName, jsonData, qos);
 
 			return true;
 		}
@@ -200,7 +242,20 @@ public class DeviceDataManager extends JedisPubSub implements IDataMessageListen
 	{
 		if (data != null) {
 			_Logger.info("Handling System Performance Message: " + data.getName());
-			if (data.hasError()) { _Logger.warning("Error in System Performance Data"); }
+
+			if (data.hasError()) { 
+				_Logger.warning("Error flag in System Performance Data"); 
+			}
+
+			if (this.cloudClient == null) {
+				_Logger.warning("CSP is null");
+				return false;
+			}
+
+			if (!this.cloudClient.sendEdgeDataToCloud(resourceName, data)) {
+				_Logger.severe("Failed to send data to CSP");
+				return false;
+			}
 			return true;
 		}
 		return false;
@@ -244,6 +299,13 @@ public class DeviceDataManager extends JedisPubSub implements IDataMessageListen
 				_Logger.severe("Failed to start CoAP server. Check log file for details.");
 			}
 		}
+		if (this.cloudClient != null) {
+			if (this.cloudClient.connectClient()) {
+				_Logger.info("Cloud client connected");
+			} else {
+				_Logger.severe("Cloud client failed to connect");
+			}
+		}
 
 		_Logger.info("DeviceDataManager started");
 	}
@@ -273,6 +335,13 @@ public class DeviceDataManager extends JedisPubSub implements IDataMessageListen
 				_Logger.severe("Failed to stop CoAP server. Check log file for details.");
 			}
 		}
+		if (this.cloudClient != null) {
+			if (this.cloudClient.disconnectClient()) {
+				_Logger.info("Cloud client disconnected");
+			} else {
+				_Logger.severe("Cloud client failed to disconnect");
+			}
+		}
 
 		_Logger.info("DeviceDataManager stopped");
 	}
@@ -295,9 +364,21 @@ public class DeviceDataManager extends JedisPubSub implements IDataMessageListen
 		}
 	}
 
+	// private void handleIncomingMessage(ResourceNameEnum resource, SystemPerformanceData data) { ...
+
 	private void handleUpstreamTransmission(ResourceNameEnum resource, String jsonData, int qos) {
-		// NOTE: This will be implemented in Part 04
-		_Logger.warning("TODO: Send JSON data to cloud service: " + resource);
+		throw new NotImplementedError("dont use this");
+
+		// _Logger.info("Sending JSON data to CSP: " + resource);
+
+		// if (this.cloudClient == null) {
+		// 	_Logger.severe("CSP is null");
+		// 	return;
+		// }
+
+		// if (!this.cloudClient.sendEdgeDataToCloud(resource, jsonData)) {
+		// 	_Logger.severe("Failed to send data to CSP");
+		// }
 	}
 
 	private void handleHumiditySensorAnalysis(ResourceNameEnum resource, SensorData data) {

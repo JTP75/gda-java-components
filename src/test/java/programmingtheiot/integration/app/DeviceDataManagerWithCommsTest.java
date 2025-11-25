@@ -35,6 +35,7 @@ public class DeviceDataManagerWithCommsTest
 {
 	// static
 	
+	@SuppressWarnings("unused")
 	private static final Logger _Logger =
 		Logger.getLogger(DeviceDataManagerWithCommsTest.class.getName());
 	
