@@ -31,6 +31,7 @@ public class ConfigConst
 	public static final String DEFAULT_MQTT_SECURE_PROTOCOL = "ssl";
 	public static final int    DEFAULT_MQTT_PORT        = 1883;
 	public static final int    DEFAULT_MQTT_SECURE_PORT = 8883;
+	public static final int    DEFAULT_PUETCE_PORT      = 8081;
 	public static final int    DEFAULT_KEEP_ALIVE       = 60;
 	public static final int    DEFAULT_POLL_CYCLES      = 60;
 	public static final int    DEFAULT_TTL              = 60;
@@ -134,6 +135,13 @@ public class ConfigConst
 	
 	public static final int    MEDIA_DEVICE_TYPE         = 3000;
 	public static final int    CAMERA_SENSOR_TYPE        = 3001;
+
+	public static final int    INTERFACE_DEVICE_TYPE     = 4000;
+	public static final int    BUTTON_SENSOR_TYPE        = 4011;
+
+	public static final int    AUDIO_DEVICE_TYPE         = 5000;
+	public static final int    TTS_ACTUATOR_TYPE         = 5001;
+	public static final int    SPEECH_SENSOR_TYPE        = 5010;
 	
 	public static final int    SYSTEM_MGMT_TYPE          = 8000;
 	public static final int    RESOURCE_MGMT_TYPE        = 8001;
@@ -148,6 +156,7 @@ public class ConfigConst
 	public static final String LED_ACTUATOR_NAME        = "LedActuator";
 	public static final String HUMIDIFIER_ACTUATOR_NAME = "HumidifierActuator";
 	public static final String HVAC_ACTUATOR_NAME       = "HvacActuator";
+	public static final String TTS_ACTUATOR_NAME        = "TtsActuator";
 
 	// this is included here for testing purposes only
 	public static final String TEMP_SENSOR_NAME = "TempSensor";
@@ -166,6 +175,11 @@ public class ConfigConst
 	
 	public static final String UPDATE_NOTIFICATIONS_MSG      = "UpdateMsg";
 	public static final String RESOURCE_REGISTRATION_REQUEST = "ResourceRegRequest";
+
+	// AI integration
+	public static final String PUETCE_CONNECT		= "connect";
+	public static final String PUETCE_CHAT			= "chat";
+	public static final String PUETCE_MSG			= "message";
 
 	/*****
 	 * Configuration Sections, Keys and Defaults
@@ -188,6 +202,7 @@ public class ConfigConst
 	public static final String OPCUA   = "Opcua";
 	public static final String SMTP    = "Smtp";
 	public static final String DATA    = "Data";
+	public static final String PUETCE  = "Puetce";
 	
 	public static final String DEVICE_LOCATION_ID_KEY        = "deviceLocationID";
 	
@@ -197,6 +212,8 @@ public class ConfigConst
 	public static final String ENABLE_CLOUD_CLIENT_KEY       = "enableCloudClient";
 	public static final String ENABLE_SMTP_CLIENT_KEY        = "enableSmtpClient";
 	public static final String ENABLE_PERSISTENCE_CLIENT_KEY = "enablePersistenceClient";
+	public static final String ENABLE_PUETCE_CLIENT_KEY 	 = "enablePuetceClient";
+
 	public static final String ENABLE_SYSTEM_PERF_KEY        = "enableSystemPerformance";
 	
 	public static final String ENABLE_RUN_FOREVER_KEY        = "enableRunForever";
@@ -225,6 +242,7 @@ public class ConfigConst
 	public static final String OPCUA_GATEWAY_SERVICE = OPCUA   + "." + GATEWAY_SERVICE;
 	public static final String SMTP_GATEWAY_SERVICE  = SMTP    + "." + GATEWAY_SERVICE;
 	public static final String DATA_GATEWAY_SERVICE  = DATA    + "." + GATEWAY_SERVICE;
+	public static final String PUETCE_GATEWAY_SERVICE= PUETCE  + "." + GATEWAY_SERVICE;
 
 	public static final String FROM_ADDRESS_KEY     = "fromAddr";
 	public static final String TO_ADDRESS_KEY       = "toAddr";

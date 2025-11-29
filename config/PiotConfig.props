@@ -73,6 +73,13 @@ port = 6379
 enableCrypt = False
 
 #
+# PUETCE client configuration information
+#
+[Puetce.GatewayService]
+host = localhost
+port = 8081
+
+#
 # GDA specific configuration information
 #
 [GatewayDevice]
@@ -85,6 +92,7 @@ enableCoapClient                = False
 enableCloudClient               = False
 enableSmtpClient                = False
 enablePersistenceClient         = False
+enablePuetceClient              = False
 enableSystemPerformance         = True
 testGdaDataPath                 = /tmp/gda-data
 testCdaDataPath                 = /tmp/cda-data

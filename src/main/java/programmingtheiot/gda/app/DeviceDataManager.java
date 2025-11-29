@@ -13,8 +13,14 @@ package programmingtheiot.gda.app;
 
 import java.time.OffsetDateTime;
 import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+
+import com.google.gson.Gson;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonSyntaxException;
 
 import programmingtheiot.common.ConfigConst;
 import programmingtheiot.common.ConfigUtil;
@@ -23,17 +29,22 @@ import programmingtheiot.common.IDataMessageListener;
 import programmingtheiot.common.ResourceNameEnum;
 
 import programmingtheiot.data.ActuatorData;
+import programmingtheiot.data.AnthropicContentBlock;
+import programmingtheiot.data.AnthropicMessage;
+import programmingtheiot.data.AnthropicRole;
 import programmingtheiot.data.BaseIotData;
 import programmingtheiot.data.DataUtil;
+import programmingtheiot.data.LLMHttpResponse;
 import programmingtheiot.data.SensorData;
 import programmingtheiot.data.SystemPerformanceData;
-
+import programmingtheiot.data.AnthropicContentBlock.Text;
 import programmingtheiot.gda.connection.CloudClientConnector;
 import programmingtheiot.gda.connection.CoapServerGateway;
 import programmingtheiot.gda.connection.IPersistenceClient;
 import programmingtheiot.gda.connection.IPubSubClient;
 import programmingtheiot.gda.connection.IRequestResponseClient;
 import programmingtheiot.gda.connection.MqttClientConnector;
+import programmingtheiot.gda.connection.PuetceClientConnector;
 import programmingtheiot.gda.connection.RedisPersistenceAdapter;
 import programmingtheiot.gda.connection.SmtpClientConnector;
 import programmingtheiot.gda.system.SystemPerformanceManager;
@@ -57,6 +68,8 @@ public class DeviceDataManager extends JedisPubSub implements IDataMessageListen
 	private boolean enableCloudClient = false;
 	private boolean enableSmtpClient = false;
 	private boolean enablePersistenceClient = false;
+	private boolean enablePuetceClient = false;
+
 	private boolean enableSystemPerf = false;
 	
 	private IActuatorDataListener actuatorDataListener = null;
@@ -65,6 +78,8 @@ public class DeviceDataManager extends JedisPubSub implements IDataMessageListen
 	private IPersistenceClient persistenceClient = null;
 	private IRequestResponseClient smtpClient = null;
 	private CoapServerGateway coapServer = null;
+	private IRequestResponseClient puetceClient = null;
+
 	private SystemPerformanceManager systemPerfMgr = null;
 
 	private ActuatorData   latestHumidifierActuatorData = null;
@@ -73,12 +88,17 @@ public class DeviceDataManager extends JedisPubSub implements IDataMessageListen
 	private OffsetDateTime latestHumiditySensorTimeStamp = null;
 
 	private boolean handleHumidityChangeOnDevice = false;
-	private int     lastKnownHumidifierCommand   = ConfigConst.OFF_COMMAND;
 	
 	private long    humidityMaxTimePastThreshold = 300; // seconds
 	private float   nominalHumiditySetting   = 40.0f;
 	private float   triggerHumidifierFloor   = 30.0f;
 	private float   triggerHumidifierCeiling = 50.0f;
+	
+	// private state vars
+
+	private int lastKnownHumidifierCommand = ConfigConst.OFF_COMMAND;
+	private String lastKnownSpeechResult = "";
+	private List<AnthropicMessage> conversation = null;
 	
 	// constructors
 	
@@ -92,6 +112,8 @@ public class DeviceDataManager extends JedisPubSub implements IDataMessageListen
 		this.enableCoapServer = configUtil.getBoolean(ConfigConst.GATEWAY_DEVICE, ConfigConst.ENABLE_COAP_SERVER_KEY);
 		this.enableCloudClient = configUtil.getBoolean(ConfigConst.GATEWAY_DEVICE, ConfigConst.ENABLE_CLOUD_CLIENT_KEY);		
 		this.enablePersistenceClient = configUtil.getBoolean(ConfigConst.GATEWAY_DEVICE, ConfigConst.ENABLE_PERSISTENCE_CLIENT_KEY);
+		this.enablePuetceClient = configUtil.getBoolean(ConfigConst.GATEWAY_DEVICE, ConfigConst.ENABLE_PUETCE_CLIENT_KEY);
+
 		this.enableSystemPerf = configUtil.getBoolean(ConfigConst.GATEWAY_DEVICE, ConfigConst.ENABLE_SYSTEM_PERF_KEY);
 
 		this.humidityMaxTimePastThreshold = configUtil.getInteger(ConfigConst.GATEWAY_DEVICE, ConfigConst.HUMID_MAX_TIME_PAST_THRESH_KEY, 300);
@@ -123,6 +145,16 @@ public class DeviceDataManager extends JedisPubSub implements IDataMessageListen
 			_Logger.info("CoAP server enabled");
 			this.coapServer.setDataMessageListener(this);
 		}
+
+		if (this.enablePuetceClient) {
+			this.puetceClient = new PuetceClientConnector();
+			_Logger.info("PUETCE LLM client enabled");
+			this.puetceClient.setDataMessageListener(this);
+			
+			this.conversation = new ArrayList<>();
+		}
+
+		// init state
 		
 		initConnections();
 	}
@@ -138,7 +170,6 @@ public class DeviceDataManager extends JedisPubSub implements IDataMessageListen
 
 		initConnections();
 	}
-	
 	
 	// public methods
 	
@@ -165,8 +196,20 @@ public class DeviceDataManager extends JedisPubSub implements IDataMessageListen
 	@Override
 	public boolean handleIncomingMessage(ResourceNameEnum resourceName, String msg)
 	{
+		Gson gson = new Gson();
 		if (msg != null) {
-			_Logger.info("Handling Generic Message: " + msg);
+			_Logger.fine("Handling Generic Message: " + resourceName);
+
+            switch (resourceName) {
+            case GDA_MESSAGE_PUETCE_RESOURCE: 
+                LLMHttpResponse response = gson.fromJson(msg, LLMHttpResponse.class);
+				AnthropicMessage message = gson.fromJson(response.data, AnthropicMessage.class);
+				handleMessagesResponse(resourceName, message);
+                break;
+            default: 
+                break;
+            }
+
 			return true;
 		}
 		return false;
@@ -290,8 +333,16 @@ public class DeviceDataManager extends JedisPubSub implements IDataMessageListen
 	}
 
 	private void handleIncomingMessage(ResourceNameEnum resource, SensorData data) {
-		if (data.getTypeID()==ConfigConst.HUMIDITY_SENSOR_TYPE) {
+		switch (data.getTypeID()) {
+		case ConfigConst.HUMIDITY_SENSOR_TYPE:
 			handleHumiditySensorAnalysis(resource, data);
+			break;
+		case ConfigConst.SPEECH_SENSOR_TYPE:
+			handleSpeechSensorAnalysis(resource, data);
+			break;
+		default:
+			_Logger.fine("Sensor type '" + data.getName() + "' is not handled on this device");
+			break;
 		}
 	}
 
@@ -446,5 +497,62 @@ public class DeviceDataManager extends JedisPubSub implements IDataMessageListen
 		}
 		
 		return odt;
+	}
+
+	private void handleMessagesResponse(ResourceNameEnum resource, AnthropicMessage message) {
+		List<AnthropicContentBlock> content = message.content;
+		_Logger.info("content: " + content.get(0).toString());
+
+		// entry point for anthropic response logic
+		// 	- tool uses need to be handled here
+
+		// validation (this should always be an ASSISTANT message)
+
+		if (message.role != AnthropicRole.ASSISTANT) {
+			_Logger.severe("Invalid response: expected 'assitant', found '" + message.role.toString() + "'");
+			return;
+		}
+		this.conversation.add(message);
+
+		
+		message.content.forEach(block -> {
+			if (block instanceof AnthropicContentBlock.Text) {
+				_Logger.warning("TODO handle text response");
+			} else if (block instanceof AnthropicContentBlock.ToolUse) {
+				_Logger.warning("TODO handle tool_use response");
+			} else {
+				_Logger.severe("Unexpected block type: " + block.getClass().getSimpleName());
+			}
+		});
+
+		ActuatorData ad = new ActuatorData();
+	}
+
+	private void handleSpeechSensorAnalysis(ResourceNameEnum resource, SensorData data) {
+		_Logger.info("Analyzing speech data from CDA: " + data.getLocationID() + ". State data: " + data.getStateData());
+		Gson gson = new Gson();
+
+		try {
+			JsonObject value = gson.fromJson(data.getStateData(), JsonObject.class);
+
+			if (
+				value.get("result").getAsString().length() > 0 &&
+				!value.get("result").getAsString().equals(this.lastKnownSpeechResult)
+			) {
+				if (!value.get("isComplete").getAsBoolean()) {
+					_Logger.fine("Using incomplete vosk result");
+				} else {
+					_Logger.fine("Using complete vosk result");
+				}
+
+				_Logger.info("Sending message to anthropic...");
+				
+				this.puetceClient
+			}
+
+			this.lastKnownSpeechResult = value.get("result").getAsString();
+		} catch (JsonSyntaxException e) {
+			_Logger.warning("Failed to parse json state data: " + e);
+		}
 	}
 }
