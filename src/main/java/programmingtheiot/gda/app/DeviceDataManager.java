@@ -19,6 +19,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonSyntaxException;
 
@@ -30,6 +31,7 @@ import programmingtheiot.common.ResourceNameEnum;
 
 import programmingtheiot.data.ActuatorData;
 import programmingtheiot.data.AnthropicContentBlock;
+import programmingtheiot.data.AnthropicContentBlockTypeAdapter;
 import programmingtheiot.data.AnthropicMessage;
 import programmingtheiot.data.AnthropicRole;
 import programmingtheiot.data.BaseIotData;
@@ -61,8 +63,7 @@ public class DeviceDataManager extends JedisPubSub implements IDataMessageListen
 	private static final Logger _Logger =
 		Logger.getLogger(DeviceDataManager.class.getName());
 	
-	// private var's
-	
+	// private var's	
 	private boolean enableMqttClient = true;
 	private boolean enableCoapServer = false;
 	private boolean enableCloudClient = false;
@@ -72,13 +73,15 @@ public class DeviceDataManager extends JedisPubSub implements IDataMessageListen
 
 	private boolean enableSystemPerf = false;
 	
+	private Gson gson = null;
+	
 	private IActuatorDataListener actuatorDataListener = null;
 	private IPubSubClient mqttClient = null;
 	private IPubSubClient cloudClient = null;
 	private IPersistenceClient persistenceClient = null;
 	private IRequestResponseClient smtpClient = null;
 	private CoapServerGateway coapServer = null;
-	private IRequestResponseClient puetceClient = null;
+	private PuetceClientConnector puetceClient = null;
 
 	private SystemPerformanceManager systemPerfMgr = null;
 
@@ -105,6 +108,10 @@ public class DeviceDataManager extends JedisPubSub implements IDataMessageListen
 	public DeviceDataManager()
 	{
 		super();
+		
+		this.gson = new GsonBuilder()
+			.registerTypeAdapter(AnthropicContentBlock.class, new AnthropicContentBlockTypeAdapter())
+			.create();
 	
 		ConfigUtil configUtil = ConfigUtil.getInstance();
 		
@@ -196,7 +203,6 @@ public class DeviceDataManager extends JedisPubSub implements IDataMessageListen
 	@Override
 	public boolean handleIncomingMessage(ResourceNameEnum resourceName, String msg)
 	{
-		Gson gson = new Gson();
 		if (msg != null) {
 			_Logger.fine("Handling Generic Message: " + resourceName);
 
@@ -509,7 +515,7 @@ public class DeviceDataManager extends JedisPubSub implements IDataMessageListen
 		// validation (this should always be an ASSISTANT message)
 
 		if (message.role != AnthropicRole.ASSISTANT) {
-			_Logger.severe("Invalid response: expected 'assitant', found '" + message.role.toString() + "'");
+			_Logger.severe("Invalid response role: expected 'assitant', found '" + message.role.toString() + "'");
 			return;
 		}
 		this.conversation.add(message);
@@ -517,9 +523,9 @@ public class DeviceDataManager extends JedisPubSub implements IDataMessageListen
 		
 		message.content.forEach(block -> {
 			if (block instanceof AnthropicContentBlock.Text) {
-				_Logger.warning("TODO handle text response");
+				_Logger.info("Handling text response");
 			} else if (block instanceof AnthropicContentBlock.ToolUse) {
-				_Logger.warning("TODO handle tool_use response");
+				_Logger.info("Handling tool_use response");
 			} else {
 				_Logger.severe("Unexpected block type: " + block.getClass().getSimpleName());
 			}
@@ -530,29 +536,54 @@ public class DeviceDataManager extends JedisPubSub implements IDataMessageListen
 
 	private void handleSpeechSensorAnalysis(ResourceNameEnum resource, SensorData data) {
 		_Logger.info("Analyzing speech data from CDA: " + data.getLocationID() + ". State data: " + data.getStateData());
-		Gson gson = new Gson();
 
+		// this is the core of ALL OUTBOUND ANTHROPIC MESSAGE LOGIC
+		// this might need to be broken into a separate module and/or handled elsewhere...
 		try {
 			JsonObject value = gson.fromJson(data.getStateData(), JsonObject.class);
 
+			// repeat logic is janky... event-driven arch would be much safer
 			if (
 				value.get("result").getAsString().length() > 0 &&
 				!value.get("result").getAsString().equals(this.lastKnownSpeechResult)
 			) {
+				// if speech detected is not a repeat and not empty
 				if (!value.get("isComplete").getAsBoolean()) {
 					_Logger.fine("Using incomplete vosk result");
 				} else {
 					_Logger.fine("Using complete vosk result");
 				}
 
-				_Logger.info("Sending message to anthropic...");
-				
-				this.puetceClient
+				if (enablePuetceClient) {
+					_Logger.info("Sending message to anthropic...");
+
+					// build new message
+					AnthropicContentBlock block = new AnthropicContentBlock.Text(value.get("result").getAsString());
+					ArrayList<AnthropicContentBlock> content = new ArrayList<>();
+					content.add(block);
+					AnthropicMessage newMessage = new AnthropicMessage(AnthropicRole.USER, content);
+
+					// append new message to conversation
+					this.conversation.add(newMessage);
+
+					boolean success = this.puetceClient.sendMessage(
+						conversation,
+						"This is the base system prompt. Your name is clyde.",
+						true,
+						0.5f
+					);
+
+					if (!success) {
+						_Logger.severe("send message failed");
+					}
+				} else {
+					_Logger.warning("LLM client not enabled");
+				}
 			}
 
 			this.lastKnownSpeechResult = value.get("result").getAsString();
 		} catch (JsonSyntaxException e) {
-			_Logger.warning("Failed to parse json state data: " + e);
+			_Logger.warning("Failed to parse json speech data: " + e);
 		}
 	}
 }

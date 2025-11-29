@@ -3,11 +3,14 @@ package programmingtheiot.gda.connection;
 import programmingtheiot.common.IDataMessageListener;
 import programmingtheiot.common.ResourceNameEnum;
 import programmingtheiot.data.AnthropicMessage;
+import programmingtheiot.data.LLMHttpRequest;
+import programmingtheiot.data.MessagesRequest;
 
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.logging.Logger;
 
@@ -58,10 +61,16 @@ public class PuetceClientConnector implements IRequestResponseClient
     ) {
         Gson gson = new Gson();
 
+        // collect arguments
+        MessagesRequest msgReq = new MessagesRequest(
+            messages, systemPrompt, useTools, randomness);
 
+        // collect into custom http request for PUETCE backend
+        LLMHttpRequest req = new LLMHttpRequest(
+            "send_message", gson.toJsonTree(msgReq).getAsJsonObject());
 
         return sendPostRequest(
-            ResourceNameEnum.GDA_MESSAGE_PUETCE_RESOURCE, null, false, null, 5);
+            ResourceNameEnum.GDA_MESSAGE_PUETCE_RESOURCE, null, false, gson.toJson(req), 5);
     }
 
     // super impls
@@ -124,9 +133,14 @@ public class PuetceClientConnector implements IRequestResponseClient
             .build();
             
         try {
-            // TODO this is blocking; will need to be asynchronous
-            HttpResponse<String> response = this.client.send(request, HttpResponse.BodyHandlers.ofString());
-            this._onPostResponse(response, resource);
+            // HttpResponse<String> response = this.client.send(request, HttpResponse.BodyHandlers.ofString());
+            // this._onPostResponse(response, resource);
+            this.client.sendAsync(request, HttpResponse.BodyHandlers.ofString())
+                .thenAccept(response -> _onPostResponse(response, resource))
+                .exceptionally(ex -> {
+                    _Logger.severe("HTTP request failed (async): " + ex);
+                    return null;
+                });
             return true;
         } catch (Exception e) {
             _Logger.warning("HTTP request failed: " + e);

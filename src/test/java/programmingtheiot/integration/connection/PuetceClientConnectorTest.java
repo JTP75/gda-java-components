@@ -126,6 +126,8 @@ public class PuetceClientConnectorTest
 
         assertTrue(puetceClient.sendPostRequest(
 			ResourceNameEnum.GDA_MESSAGE_PUETCE_RESOURCE, null, false, gson.toJson(req), 5));
+
+		try { Thread.sleep(5000L); } catch (Exception e) {}
 	}
 	
 	/**

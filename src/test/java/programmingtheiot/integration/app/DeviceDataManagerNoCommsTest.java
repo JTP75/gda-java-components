@@ -190,6 +190,31 @@ public class DeviceDataManagerNoCommsTest
 	}
 	
 	/**
+	 * Test single message
+	 */
+	@Test
+	public void testSpeechSensorDataAnalysisSingle()
+	{
+		DeviceDataManager devDataMgr = new DeviceDataManager();
+		SensorData sd1;
+		
+		devDataMgr.startManager();
+		try { Thread.sleep(2000L); } catch (InterruptedException e) {}
+		
+		_Logger.info("Handling incomplete result (1st)");
+		sd1 = new SensorData();
+		sd1.setTypeID(ConfigConst.SPEECH_SENSOR_TYPE);
+		// sd1.setStateData(makeStateData("Hello, I'm John. Whats your name?", "Hello, I'm John. Whats your name?", false));
+		// sd1.setStateData(makeStateData("What tools do you have available", "What tools do you have available", false));
+		sd1.setStateData(makeStateData("What is todays message of the day", "What is todays message of the day", false));
+		devDataMgr.handleSensorMessage(ResourceNameEnum.CDA_SENSOR_MSG_RESOURCE, sd1);
+		try { Thread.sleep(2000L); } catch (InterruptedException e) {}
+		
+		devDataMgr.stopManager();
+		try { Thread.sleep(2000L); } catch (InterruptedException e) {}
+	}
+
+	/**
 	 * Test method for running the DeviceDataManager.
 	 */
 	@Test
