@@ -99,6 +99,7 @@ public class DeviceDataManager extends JedisPubSub implements IDataMessageListen
 	
 	// private state vars
 
+	private String lastMessageLocationID = "";
 	private int lastKnownHumidifierCommand = ConfigConst.OFF_COMMAND;
 	private String lastKnownSpeechResult = "";
 	private List<AnthropicMessage> conversation = null;
@@ -357,9 +358,13 @@ public class DeviceDataManager extends JedisPubSub implements IDataMessageListen
 		_Logger.warning("TODO: Send JSON data to cloud service: " + resource);
 	}
 
+	@SuppressWarnings("unused")
 	private void handleHumiditySensorAnalysis(ResourceNameEnum resource, SensorData data) {
 		_Logger.info("Analyzing humidity data from CDA: " + data.getLocationID() + ". Value: " + data.getValue());
-	
+
+		// TODO were bypassing this because it is breaking something...
+		if (true) {return;}
+
 		boolean isLow  = data.getValue() < this.triggerHumidifierFloor;
 		boolean isHigh = data.getValue() > this.triggerHumidifierCeiling;
 
@@ -506,8 +511,7 @@ public class DeviceDataManager extends JedisPubSub implements IDataMessageListen
 	}
 
 	private void handleMessagesResponse(ResourceNameEnum resource, AnthropicMessage message) {
-		List<AnthropicContentBlock> content = message.content;
-		_Logger.info("content: " + content.get(0).toString());
+		_Logger.info("Handling response from anthropic: " + resource.getResourceName());
 
 		// entry point for anthropic response logic
 		// 	- tool uses need to be handled here
@@ -520,22 +524,32 @@ public class DeviceDataManager extends JedisPubSub implements IDataMessageListen
 		}
 		this.conversation.add(message);
 
-		
 		message.content.forEach(block -> {
 			if (block instanceof AnthropicContentBlock.Text) {
 				_Logger.info("Handling text response");
+				AnthropicContentBlock.Text textBlock = (AnthropicContentBlock.Text)block;
+
+				ActuatorData ad = new ActuatorData();
+				ad.setName(ConfigConst.TTS_ACTUATOR_NAME);
+				ad.setTypeID(ConfigConst.TTS_ACTUATOR_TYPE);
+				ad.setCommand(ConfigConst.ON_COMMAND);
+				ad.setLocationID(this.lastMessageLocationID);
+				ad.setStateData(textBlock.text);
+
+				sendActuatorCommandtoCda(ResourceNameEnum.CDA_ACTUATOR_CMD_RESOURCE, ad);
 			} else if (block instanceof AnthropicContentBlock.ToolUse) {
 				_Logger.info("Handling tool_use response");
+				// TODO
 			} else {
 				_Logger.severe("Unexpected block type: " + block.getClass().getSimpleName());
 			}
 		});
-
-		ActuatorData ad = new ActuatorData();
 	}
 
 	private void handleSpeechSensorAnalysis(ResourceNameEnum resource, SensorData data) {
 		_Logger.info("Analyzing speech data from CDA: " + data.getLocationID() + ". State data: " + data.getStateData());
+		// TODO this is a workaround
+		this.lastMessageLocationID = data.getLocationID();
 
 		// this is the core of ALL OUTBOUND ANTHROPIC MESSAGE LOGIC
 		// this might need to be broken into a separate module and/or handled elsewhere...
@@ -568,7 +582,10 @@ public class DeviceDataManager extends JedisPubSub implements IDataMessageListen
 
 					boolean success = this.puetceClient.sendMessage(
 						conversation,
-						"This is the base system prompt. Your name is clyde.",
+						"You are generating a spoken response. Your " + //
+						"response should as concise as possible. Responses should " + //
+						"be plain text (no markdown). Your responses should be short " + //
+						"and conversational: 50 words or less.",
 						true,
 						0.5f
 					);
