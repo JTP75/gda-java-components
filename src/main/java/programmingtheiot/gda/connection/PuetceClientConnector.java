@@ -3,6 +3,7 @@ package programmingtheiot.gda.connection;
 import programmingtheiot.common.IDataMessageListener;
 import programmingtheiot.common.ResourceNameEnum;
 import programmingtheiot.data.AnthropicMessage;
+import programmingtheiot.data.ExecuteToolRequest;
 import programmingtheiot.data.LLMHttpRequest;
 import programmingtheiot.data.MessagesRequest;
 
@@ -15,6 +16,7 @@ import java.util.List;
 import java.util.logging.Logger;
 
 import com.google.gson.Gson;
+import com.google.gson.JsonObject;
 
 import programmingtheiot.common.ConfigConst;
 import programmingtheiot.common.ConfigUtil;
@@ -71,6 +73,24 @@ public class PuetceClientConnector implements IRequestResponseClient
 
         return sendPostRequest(
             ResourceNameEnum.GDA_MESSAGE_PUETCE_RESOURCE, null, false, gson.toJson(req), 5);
+    }
+
+    public boolean executeTool(
+        String name,
+        JsonObject input
+    ) {
+        Gson gson = new Gson();
+
+        // collect arguments
+        ExecuteToolRequest execToolReq = new ExecuteToolRequest(
+            name, input);
+
+        // collect into custom http request for PUETCE backend
+        LLMHttpRequest req = new LLMHttpRequest(
+            "execute_tool", gson.toJsonTree(execToolReq).getAsJsonObject());
+
+        return sendPostRequest(
+            ResourceNameEnum.GDA_EXECUTE_TOOL_PUETCE_RESOURCE, null, false, gson.toJson(req), 5);
     }
 
     // super impls

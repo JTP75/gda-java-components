@@ -197,6 +197,8 @@ public class DeviceDataManagerNoCommsTest
 	{
 		DeviceDataManager devDataMgr = new DeviceDataManager();
 		SensorData sd1;
+		// String message = "What is todays message of the day";
+		String message = "What are three tasks from my task list I should do now?";
 		
 		devDataMgr.startManager();
 		try { Thread.sleep(2000L); } catch (InterruptedException e) {}
@@ -204,11 +206,9 @@ public class DeviceDataManagerNoCommsTest
 		_Logger.info("Handling incomplete result (1st)");
 		sd1 = new SensorData();
 		sd1.setTypeID(ConfigConst.SPEECH_SENSOR_TYPE);
-		// sd1.setStateData(makeStateData("Hello, I'm John. Whats your name?", "Hello, I'm John. Whats your name?", false));
-		// sd1.setStateData(makeStateData("What tools do you have available", "What tools do you have available", false));
-		sd1.setStateData(makeStateData("What is todays message of the day", "What is todays message of the day", false));
+		sd1.setStateData(makeStateData(message, message, false));
 		devDataMgr.handleSensorMessage(ResourceNameEnum.CDA_SENSOR_MSG_RESOURCE, sd1);
-		try { Thread.sleep(2000L); } catch (InterruptedException e) {}
+		try { Thread.sleep(60000L); } catch (InterruptedException e) {}
 		
 		devDataMgr.stopManager();
 		try { Thread.sleep(2000L); } catch (InterruptedException e) {}

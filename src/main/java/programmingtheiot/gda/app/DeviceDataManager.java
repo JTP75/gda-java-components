@@ -37,8 +37,10 @@ import programmingtheiot.data.AnthropicRole;
 import programmingtheiot.data.BaseIotData;
 import programmingtheiot.data.DataUtil;
 import programmingtheiot.data.LLMHttpResponse;
+import programmingtheiot.data.LLMHttpResponseDeserializer;
 import programmingtheiot.data.SensorData;
 import programmingtheiot.data.SystemPerformanceData;
+import programmingtheiot.data.ToolResultContentBlock;
 import programmingtheiot.data.AnthropicContentBlock.Text;
 import programmingtheiot.gda.connection.CloudClientConnector;
 import programmingtheiot.gda.connection.CoapServerGateway;
@@ -86,7 +88,6 @@ public class DeviceDataManager extends JedisPubSub implements IDataMessageListen
 	private SystemPerformanceManager systemPerfMgr = null;
 
 	private ActuatorData   latestHumidifierActuatorData = null;
-	private ActuatorData   latestHumidifierActuatorResponse = null;
 	private SensorData     latestHumiditySensorData = null;
 	private OffsetDateTime latestHumiditySensorTimeStamp = null;
 
@@ -99,7 +100,9 @@ public class DeviceDataManager extends JedisPubSub implements IDataMessageListen
 	
 	// private state vars
 
+	private ActuatorData latestHumidifierActuatorResponse = null;
 	private String lastMessageLocationID = "";
+	private String lastToolID = "";
 	private int lastKnownHumidifierCommand = ConfigConst.OFF_COMMAND;
 	private String lastKnownSpeechResult = "";
 	private List<AnthropicMessage> conversation = null;
@@ -112,6 +115,7 @@ public class DeviceDataManager extends JedisPubSub implements IDataMessageListen
 		
 		this.gson = new GsonBuilder()
 			.registerTypeAdapter(AnthropicContentBlock.class, new AnthropicContentBlockTypeAdapter())
+			.registerTypeAdapter(LLMHttpResponse.class, new LLMHttpResponseDeserializer())
 			.create();
 	
 		ConfigUtil configUtil = ConfigUtil.getInstance();
@@ -205,14 +209,18 @@ public class DeviceDataManager extends JedisPubSub implements IDataMessageListen
 	public boolean handleIncomingMessage(ResourceNameEnum resourceName, String msg)
 	{
 		if (msg != null) {
-			_Logger.fine("Handling Generic Message: " + resourceName);
+			_Logger.info("Handling Generic Message: " + resourceName.getResourceName());
+            LLMHttpResponse response = gson.fromJson(msg, LLMHttpResponse.class);
 
             switch (resourceName) {
             case GDA_MESSAGE_PUETCE_RESOURCE: 
-                LLMHttpResponse response = gson.fromJson(msg, LLMHttpResponse.class);
 				AnthropicMessage message = gson.fromJson(response.data, AnthropicMessage.class);
 				handleMessagesResponse(resourceName, message);
                 break;
+			case GDA_EXECUTE_TOOL_PUETCE_RESOURCE:
+				String result = response.data.get("value").getAsString();
+				handleExecuteToolResponse(resourceName, result);
+				break;
             default: 
                 break;
             }
@@ -522,13 +530,14 @@ public class DeviceDataManager extends JedisPubSub implements IDataMessageListen
 			_Logger.severe("Invalid response role: expected 'assitant', found '" + message.role.toString() + "'");
 			return;
 		}
-		this.conversation.add(message);
+		this.conversation.add(message); // TODO hide tool use and tool results
 
 		message.content.forEach(block -> {
 			if (block instanceof AnthropicContentBlock.Text) {
 				_Logger.info("Handling text response");
 				AnthropicContentBlock.Text textBlock = (AnthropicContentBlock.Text)block;
 
+				// say the response
 				ActuatorData ad = new ActuatorData();
 				ad.setName(ConfigConst.TTS_ACTUATOR_NAME);
 				ad.setTypeID(ConfigConst.TTS_ACTUATOR_TYPE);
@@ -539,15 +548,62 @@ public class DeviceDataManager extends JedisPubSub implements IDataMessageListen
 				sendActuatorCommandtoCda(ResourceNameEnum.CDA_ACTUATOR_CMD_RESOURCE, ad);
 			} else if (block instanceof AnthropicContentBlock.ToolUse) {
 				_Logger.info("Handling tool_use response");
-				// TODO
+				AnthropicContentBlock.ToolUse toolUseBlock = (AnthropicContentBlock.ToolUse)block;
+
+				// say executing tool
+				ActuatorData ad = new ActuatorData();
+				ad.setName(ConfigConst.TTS_ACTUATOR_NAME);
+				ad.setTypeID(ConfigConst.TTS_ACTUATOR_TYPE);
+				ad.setCommand(ConfigConst.ON_COMMAND);
+				ad.setLocationID(this.lastMessageLocationID);
+				ad.setStateData("Executing " + toolUseBlock.name);
+
+				sendActuatorCommandtoCda(ResourceNameEnum.CDA_ACTUATOR_CMD_RESOURCE, ad);
+
+				// execute tool
+				this.lastToolID = toolUseBlock.id;
+				puetceClient.executeTool(toolUseBlock.name, toolUseBlock.input);
 			} else {
 				_Logger.severe("Unexpected block type: " + block.getClass().getSimpleName());
 			}
 		});
 	}
 
+	private void handleExecuteToolResponse(ResourceNameEnum resource, String result) {
+		_Logger.info("Handling response from tool execution: " + resource.getResourceName());
+
+		ToolResultContentBlock.Text tblock = new ToolResultContentBlock.Text(result);
+		ArrayList<ToolResultContentBlock> tcontent = new ArrayList<>();
+		tcontent.add(tblock);
+
+		AnthropicContentBlock.ToolResult block = new AnthropicContentBlock.ToolResult(this.lastToolID, tcontent);
+		ArrayList<AnthropicContentBlock> content = new ArrayList<>();
+		content.add(block);
+
+		AnthropicMessage toolResultMessage = new AnthropicMessage(AnthropicRole.USER, content);
+		conversation.add(toolResultMessage);
+
+		puetceClient.sendMessage(
+			conversation,
+			"You are generating a spoken response. Your " + //
+			"response should as concise as possible. Responses should " + //
+			"be plain text (no markdown). Your responses should be short " + //
+			"and conversational: 100 words or less. Your response should " + //
+			"contain no markdown syntax.\n\n"
+			
+			+
+			
+			"This is a tool response generated by the system. The response " + //
+			"contains the result of the most recent tool execution.",
+			true,
+			0.5f
+		);
+
+		// TODO
+	}
+
 	private void handleSpeechSensorAnalysis(ResourceNameEnum resource, SensorData data) {
-		_Logger.info("Analyzing speech data from CDA: " + data.getLocationID() + ". State data: " + data.getStateData());
+		_Logger.info("Analyzing speech data from " + data.getLocationID() + ". State data: " + data.getStateData());
 		// TODO this is a workaround
 		this.lastMessageLocationID = data.getLocationID();
 
@@ -585,7 +641,8 @@ public class DeviceDataManager extends JedisPubSub implements IDataMessageListen
 						"You are generating a spoken response. Your " + //
 						"response should as concise as possible. Responses should " + //
 						"be plain text (no markdown). Your responses should be short " + //
-						"and conversational: 50 words or less.",
+						"and conversational: 100 words or less. Your response should " + //
+						"contain no markdown syntax.",
 						true,
 						0.5f
 					);

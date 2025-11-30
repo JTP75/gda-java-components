@@ -178,7 +178,11 @@ public class ConfigConst
 
 	// AI integration
 	public static final String PUETCE_CONNECT		= "connect";
+	public static final String PUETCE_TOOLS			= "tools";
+
 	public static final String PUETCE_CHAT			= "chat";
+	public static final String PUETCE_EXECUTE		= "execute_tool";
+
 	public static final String PUETCE_MSG			= "message";
 
 	/*****

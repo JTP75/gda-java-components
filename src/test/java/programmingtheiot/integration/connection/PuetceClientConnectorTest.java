@@ -33,6 +33,7 @@ import programmingtheiot.data.AnthropicContentBlock;
 import programmingtheiot.data.AnthropicMessage;
 import programmingtheiot.data.AnthropicRole;
 import programmingtheiot.data.DataUtil;
+import programmingtheiot.data.ExecuteToolRequest;
 import programmingtheiot.data.LLMHttpRequest;
 import programmingtheiot.data.MessagesRequest;
 import programmingtheiot.data.SystemStateData;
@@ -117,16 +118,28 @@ public class PuetceClientConnectorTest
 		List<AnthropicMessage> messages = new ArrayList<>();
 		messages.add(new AnthropicMessage(AnthropicRole.USER, content));
 
-		MessagesRequest request = new MessagesRequest(messages);
+		// MessagesRequest request = new MessagesRequest(messages);
 
-		LLMHttpRequest req = new LLMHttpRequest(
-			"send_message", gson.toJsonTree(request).getAsJsonObject());
+		// LLMHttpRequest req = new LLMHttpRequest(
+		// 	"send_message", gson.toJsonTree(request).getAsJsonObject());
 
-        _Logger.info("req: " + gson.toJson(req));
+        // _Logger.info("req: " + gson.toJson(req));
 
-        assertTrue(puetceClient.sendPostRequest(
-			ResourceNameEnum.GDA_MESSAGE_PUETCE_RESOURCE, null, false, gson.toJson(req), 5));
+        // assertTrue(puetceClient.sendPostRequest(
+		// 	ResourceNameEnum.GDA_MESSAGE_PUETCE_RESOURCE, null, false, gson.toJson(req), 5));
 
+		puetceClient.sendMessage(messages, "", false, 0.5f);
+
+		try { Thread.sleep(5000L); } catch (Exception e) {}
+	}
+
+	/**
+	 * 
+	 */
+	@Test
+	public void testExecuteTool() 
+	{
+		puetceClient.executeTool("custom-motd-get_motd", new JsonObject());
 		try { Thread.sleep(5000L); } catch (Exception e) {}
 	}
 	
