@@ -436,14 +436,18 @@ public class MqttClientConnector implements IPubSubClient, MqttCallbackExtended
 			_Logger.info("Checking credential file...");
 			Properties props = cu.getCredentials(configSectionName);
 			if (props!=null) {
-				this.connOptions.setUserName(cu.getProperty(ConfigConst.USER_NAME_TOKEN_KEY, ""));
-				this.connOptions.setPassword(cu.getProperty(ConfigConst.USER_AUTH_TOKEN_KEY, "").toCharArray());
+				String username = props.getProperty(ConfigConst.USER_NAME_TOKEN_KEY, "");
+				String password = props.getProperty(ConfigConst.USER_AUTH_TOKEN_KEY, "");
+
+				this.connOptions.setUserName(username);
+				this.connOptions.setPassword(password.toCharArray());
+
 				_Logger.info("Credentials set");
 			} else {
 				_Logger.warning("No credentials set");
 			}
 		} catch (Exception e) {
-			_Logger.log(Level.SEVERE, "No credential file.");
+			_Logger.log(Level.SEVERE, "Credential loading failed.");
 			throw e;
 		}
 	}

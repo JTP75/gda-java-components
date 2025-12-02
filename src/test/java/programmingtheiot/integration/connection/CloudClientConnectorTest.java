@@ -105,7 +105,7 @@ public class CloudClientConnectorTest
 		try {
 			// sleep for 4 seconds or so...
 			
-			Thread.sleep(4000L);
+			Thread.sleep(14000L);
 		} catch (Exception e) {
 			// ignore
 		}

@@ -64,6 +64,9 @@ public class CloudClientConnector implements ICloudClient
 	{
 		if (this.mqtt == null) {
 			this.mqtt = new MqttClientConnector(ConfigConst.CLOUD_GATEWAY_SERVICE);
+			if (this.listener != null) {
+				this.mqtt.setDataMessageListener(this.listener);
+			}
 		}
 
 		return mqtt.connectClient();
@@ -80,6 +83,10 @@ public class CloudClientConnector implements ICloudClient
 	@Override
 	public boolean setDataMessageListener(IDataMessageListener listener)
 	{
+		if (listener != null) {
+			this.listener = listener;
+			return true;
+		}
 		return false;
 	}
 
@@ -177,7 +184,12 @@ public class CloudClientConnector implements ICloudClient
 	private boolean publishMessageToCloud(String topic, String payload)
 	{
 		try {
-			_Logger.fine("Publishing payload to CSP topic: " + topic);
+			if (!this.mqtt.isConnected()) {
+				_Logger.warning("MQTT client is not connected to broker");
+				return false;
+			}
+
+			_Logger.info("Publishing payload to CSP topic: " + topic);
 
 			// TODO this is where throttling will go (if necessary)
 

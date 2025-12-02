@@ -272,8 +272,16 @@ public class DeviceDataManager extends JedisPubSub implements IDataMessageListen
 	{
 		_Logger.info("Starting DeviceDataManager...");
 
-		if (this.systemPerfMgr != null) { this.systemPerfMgr.startManager(); }
-		if (this.persistenceClient != null) { this.persistenceClient.connectClient(); }
+		if (this.cloudClient != null) {
+			if (this.cloudClient.connectClient()) {
+				_Logger.info("Cloud client connected");
+			} else {
+				_Logger.severe("Cloud client failed to connect");
+			}
+		}
+		if (this.persistenceClient != null) {
+			this.persistenceClient.connectClient();
+		}
 		if (this.mqttClient != null) {
 			if (this.mqttClient.connectClient()) {
 				_Logger.info("Successfully connected to MQTT broker.");
@@ -299,13 +307,7 @@ public class DeviceDataManager extends JedisPubSub implements IDataMessageListen
 				_Logger.severe("Failed to start CoAP server. Check log file for details.");
 			}
 		}
-		if (this.cloudClient != null) {
-			if (this.cloudClient.connectClient()) {
-				_Logger.info("Cloud client connected");
-			} else {
-				_Logger.severe("Cloud client failed to connect");
-			}
-		}
+		if (this.systemPerfMgr != null) { this.systemPerfMgr.startManager(); }
 
 		_Logger.info("DeviceDataManager started");
 	}
