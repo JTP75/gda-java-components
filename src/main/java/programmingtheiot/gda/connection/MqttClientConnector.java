@@ -181,9 +181,8 @@ public class MqttClientConnector implements IPubSubClient, MqttCallbackExtended
 	public boolean setConnectionListener(IConnectionListener listener)
 	{
 		if (listener != null) {
-			_Logger.info("Setting connection listener...");
+			_Logger.info("Setting connection listener");
 			this.connectionListener = listener;
-			_Logger.info("Connection listener set");
 			return true;
 		} else {
 			_Logger.warning("No connection listener specified");
