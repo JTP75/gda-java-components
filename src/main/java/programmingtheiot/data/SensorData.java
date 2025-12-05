@@ -25,6 +25,7 @@ public class SensorData extends BaseIotData
 	// private var's
 
 	private float value = ConfigConst.DEFAULT_VAL;
+	private String stateData = null;
     
 	// constructors
 	
@@ -50,6 +51,16 @@ public class SensorData extends BaseIotData
 	{
 		updateTimeStamp();
 		this.value = val;
+	}
+
+	public String getStateData()
+	{
+		return this.stateData;
+	}
+
+	public void setStateData(String stateData)
+	{
+		this.stateData = stateData;
 	}
 	
 	/**

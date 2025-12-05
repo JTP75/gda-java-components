@@ -13,10 +13,16 @@ package programmingtheiot.gda.app;
 
 import java.time.OffsetDateTime;
 import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-import kotlin.NotImplementedError;
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonSyntaxException;
+
 import programmingtheiot.common.ConfigConst;
 import programmingtheiot.common.ConfigUtil;
 import programmingtheiot.common.IActuatorDataListener;
@@ -24,11 +30,18 @@ import programmingtheiot.common.IDataMessageListener;
 import programmingtheiot.common.ResourceNameEnum;
 
 import programmingtheiot.data.ActuatorData;
+import programmingtheiot.data.AnthropicContentBlock;
+import programmingtheiot.data.AnthropicContentBlockTypeAdapter;
+import programmingtheiot.data.AnthropicMessage;
+import programmingtheiot.data.AnthropicRole;
 import programmingtheiot.data.BaseIotData;
 import programmingtheiot.data.DataUtil;
+import programmingtheiot.data.LLMHttpResponse;
+import programmingtheiot.data.LLMHttpResponseDeserializer;
 import programmingtheiot.data.SensorData;
 import programmingtheiot.data.SystemPerformanceData;
-
+import programmingtheiot.data.ToolResultContentBlock;
+import programmingtheiot.data.AnthropicContentBlock.Text;
 import programmingtheiot.gda.connection.CloudClientConnector;
 import programmingtheiot.gda.connection.CoapServerGateway;
 import programmingtheiot.gda.connection.ICloudClient;
@@ -36,6 +49,7 @@ import programmingtheiot.gda.connection.IPersistenceClient;
 import programmingtheiot.gda.connection.IPubSubClient;
 import programmingtheiot.gda.connection.IRequestResponseClient;
 import programmingtheiot.gda.connection.MqttClientConnector;
+import programmingtheiot.gda.connection.PuetceClientConnector;
 import programmingtheiot.gda.connection.RedisPersistenceAdapter;
 import programmingtheiot.gda.connection.SmtpClientConnector;
 import programmingtheiot.gda.system.SystemPerformanceManager;
@@ -53,14 +67,17 @@ public class DeviceDataManager extends JedisPubSub implements IDataMessageListen
 	private static final Logger _Logger =
 		Logger.getLogger(DeviceDataManager.class.getName());
 	
-	// private var's
-	
+	// private var's	
 	private boolean enableMqttClient = true;
 	private boolean enableCoapServer = false;
 	private boolean enableCloudClient = false;
 	private boolean enableSmtpClient = false;
 	private boolean enablePersistenceClient = false;
+	private boolean enablePuetceClient = false;
+
 	private boolean enableSystemPerf = false;
+	
+	private Gson gson = null;
 	
 	private IActuatorDataListener actuatorDataListener = null;
 	private IPubSubClient mqttClient = null;
@@ -68,26 +85,40 @@ public class DeviceDataManager extends JedisPubSub implements IDataMessageListen
 	private IPersistenceClient persistenceClient = null;
 	private IRequestResponseClient smtpClient = null;
 	private CoapServerGateway coapServer = null;
+	private PuetceClientConnector puetceClient = null;
+
 	private SystemPerformanceManager systemPerfMgr = null;
 
 	private ActuatorData   latestHumidifierActuatorData = null;
-	private ActuatorData   latestHumidifierActuatorResponse = null;
 	private SensorData     latestHumiditySensorData = null;
 	private OffsetDateTime latestHumiditySensorTimeStamp = null;
 
 	private boolean handleHumidityChangeOnDevice = false;
-	private int     lastKnownHumidifierCommand   = ConfigConst.OFF_COMMAND;
 	
 	private long    humidityMaxTimePastThreshold = 300; // seconds
 	private float   nominalHumiditySetting   = 40.0f;
 	private float   triggerHumidifierFloor   = 30.0f;
 	private float   triggerHumidifierCeiling = 50.0f;
 	
+	// private state vars
+
+	private ActuatorData latestHumidifierActuatorResponse = null;
+	private String lastMessageLocationID = "";
+	private String lastToolID = "";
+	private int lastKnownHumidifierCommand = ConfigConst.OFF_COMMAND;
+	private String lastKnownSpeechResult = "";
+	private List<AnthropicMessage> conversation = null;
+	
 	// constructors
 	
 	public DeviceDataManager()
 	{
 		super();
+		
+		this.gson = new GsonBuilder()
+			.registerTypeAdapter(AnthropicContentBlock.class, new AnthropicContentBlockTypeAdapter())
+			.registerTypeAdapter(LLMHttpResponse.class, new LLMHttpResponseDeserializer())
+			.create();
 	
 		ConfigUtil configUtil = ConfigUtil.getInstance();
 		
@@ -95,6 +126,8 @@ public class DeviceDataManager extends JedisPubSub implements IDataMessageListen
 		this.enableCoapServer = configUtil.getBoolean(ConfigConst.GATEWAY_DEVICE, ConfigConst.ENABLE_COAP_SERVER_KEY);
 		this.enableCloudClient = configUtil.getBoolean(ConfigConst.GATEWAY_DEVICE, ConfigConst.ENABLE_CLOUD_CLIENT_KEY);		
 		this.enablePersistenceClient = configUtil.getBoolean(ConfigConst.GATEWAY_DEVICE, ConfigConst.ENABLE_PERSISTENCE_CLIENT_KEY);
+		this.enablePuetceClient = configUtil.getBoolean(ConfigConst.GATEWAY_DEVICE, ConfigConst.ENABLE_PUETCE_CLIENT_KEY);
+
 		this.enableSystemPerf = configUtil.getBoolean(ConfigConst.GATEWAY_DEVICE, ConfigConst.ENABLE_SYSTEM_PERF_KEY);
 
 		this.humidityMaxTimePastThreshold = configUtil.getInteger(ConfigConst.GATEWAY_DEVICE, ConfigConst.HUMID_MAX_TIME_PAST_THRESH_KEY, 300);
@@ -132,6 +165,16 @@ public class DeviceDataManager extends JedisPubSub implements IDataMessageListen
 			_Logger.info("Cloud client enabled");
 			this.cloudClient.setDataMessageListener(this);
 		}
+
+		if (this.enablePuetceClient) {
+			this.puetceClient = new PuetceClientConnector();
+			_Logger.info("PUETCE LLM client enabled");
+			this.puetceClient.setDataMessageListener(this);
+			
+			this.conversation = new ArrayList<>();
+		}
+
+		// init state
 		
 		initConnections();
 	}
@@ -147,7 +190,6 @@ public class DeviceDataManager extends JedisPubSub implements IDataMessageListen
 
 		initConnections();
 	}
-	
 	
 	// public methods
 	
@@ -198,7 +240,22 @@ public class DeviceDataManager extends JedisPubSub implements IDataMessageListen
 	public boolean handleIncomingMessage(ResourceNameEnum resourceName, String msg)
 	{
 		if (msg != null) {
-			_Logger.info("Handling Generic Message: " + msg);
+			_Logger.info("Handling Generic Message: " + resourceName.getResourceName());
+            LLMHttpResponse response = gson.fromJson(msg, LLMHttpResponse.class);
+
+            switch (resourceName) {
+            case GDA_MESSAGE_PUETCE_RESOURCE: 
+				AnthropicMessage message = gson.fromJson(response.data, AnthropicMessage.class);
+				handleMessagesResponse(resourceName, message);
+                break;
+			case GDA_EXECUTE_TOOL_PUETCE_RESOURCE:
+				String result = response.data.get("value").getAsString();
+				handleExecuteToolResponse(resourceName, result);
+				break;
+            default: 
+                break;
+            }
+
 			return true;
 		}
 		return false;
@@ -359,8 +416,16 @@ public class DeviceDataManager extends JedisPubSub implements IDataMessageListen
 	}
 
 	private void handleIncomingMessage(ResourceNameEnum resource, SensorData data) {
-		if (data.getTypeID()==ConfigConst.HUMIDITY_SENSOR_TYPE) {
+		switch (data.getTypeID()) {
+		case ConfigConst.HUMIDITY_SENSOR_TYPE:
 			handleHumiditySensorAnalysis(resource, data);
+			break;
+		case ConfigConst.SPEECH_SENSOR_TYPE:
+			handleSpeechSensorAnalysis(resource, data);
+			break;
+		default:
+			_Logger.fine("Sensor type '" + data.getName() + "' is not handled on this device");
+			break;
 		}
 	}
 
@@ -381,9 +446,13 @@ public class DeviceDataManager extends JedisPubSub implements IDataMessageListen
 		// }
 	}
 
+	@SuppressWarnings("unused")
 	private void handleHumiditySensorAnalysis(ResourceNameEnum resource, SensorData data) {
 		_Logger.info("Analyzing humidity data from CDA: " + data.getLocationID() + ". Value: " + data.getValue());
-	
+
+		// TODO were bypassing this because it is breaking something...
+		if (true) {return;}
+
 		boolean isLow  = data.getValue() < this.triggerHumidifierFloor;
 		boolean isHigh = data.getValue() > this.triggerHumidifierCeiling;
 
@@ -527,5 +596,148 @@ public class DeviceDataManager extends JedisPubSub implements IDataMessageListen
 		}
 		
 		return odt;
+	}
+
+	private void handleMessagesResponse(ResourceNameEnum resource, AnthropicMessage message) {
+		_Logger.info("Handling response from anthropic: " + resource.getResourceName());
+
+		// entry point for anthropic response logic
+		// 	- tool uses need to be handled here
+
+		// validation (this should always be an ASSISTANT message)
+
+		if (message.role != AnthropicRole.ASSISTANT) {
+			_Logger.severe("Invalid response role: expected 'assitant', found '" + message.role.toString() + "'");
+			return;
+		}
+		this.conversation.add(message); // TODO hide tool use and tool results
+
+		message.content.forEach(block -> {
+			if (block instanceof AnthropicContentBlock.Text) {
+				_Logger.info("Handling text response");
+				AnthropicContentBlock.Text textBlock = (AnthropicContentBlock.Text)block;
+
+				// say the response
+				ActuatorData ad = new ActuatorData();
+				ad.setName(ConfigConst.TTS_ACTUATOR_NAME);
+				ad.setTypeID(ConfigConst.TTS_ACTUATOR_TYPE);
+				ad.setCommand(ConfigConst.ON_COMMAND);
+				ad.setLocationID(this.lastMessageLocationID);
+				ad.setStateData(textBlock.text);
+
+				sendActuatorCommandtoCda(ResourceNameEnum.CDA_ACTUATOR_CMD_RESOURCE, ad);
+			} else if (block instanceof AnthropicContentBlock.ToolUse) {
+				_Logger.info("Handling tool_use response");
+				AnthropicContentBlock.ToolUse toolUseBlock = (AnthropicContentBlock.ToolUse)block;
+
+				// say executing tool
+				ActuatorData ad = new ActuatorData();
+				ad.setName(ConfigConst.TTS_ACTUATOR_NAME);
+				ad.setTypeID(ConfigConst.TTS_ACTUATOR_TYPE);
+				ad.setCommand(ConfigConst.ON_COMMAND);
+				ad.setLocationID(this.lastMessageLocationID);
+				ad.setStateData("Executing " + toolUseBlock.name);
+
+				sendActuatorCommandtoCda(ResourceNameEnum.CDA_ACTUATOR_CMD_RESOURCE, ad);
+
+				// execute tool
+				this.lastToolID = toolUseBlock.id;
+				puetceClient.executeTool(toolUseBlock.name, toolUseBlock.input);
+			} else {
+				_Logger.severe("Unexpected block type: " + block.getClass().getSimpleName());
+			}
+		});
+	}
+
+	private void handleExecuteToolResponse(ResourceNameEnum resource, String result) {
+		_Logger.info("Handling response from tool execution: " + resource.getResourceName());
+
+		ToolResultContentBlock.Text tblock = new ToolResultContentBlock.Text(result);
+		ArrayList<ToolResultContentBlock> tcontent = new ArrayList<>();
+		tcontent.add(tblock);
+
+		AnthropicContentBlock.ToolResult block = new AnthropicContentBlock.ToolResult(this.lastToolID, tcontent);
+		ArrayList<AnthropicContentBlock> content = new ArrayList<>();
+		content.add(block);
+
+		AnthropicMessage toolResultMessage = new AnthropicMessage(AnthropicRole.USER, content);
+		conversation.add(toolResultMessage);
+
+		puetceClient.sendMessage(
+			conversation,
+			"You are generating a spoken response. Your " + //
+			"response should as concise as possible. Responses should " + //
+			"be plain text (no markdown). Your responses should be short " + //
+			"and conversational: 100 words or less. Your response should " + //
+			"contain no markdown syntax.\n\n"
+			
+			+
+			
+			"This is a tool response generated by the system. The response " + //
+			"contains the result of the most recent tool execution.",
+			true,
+			0.5f
+		);
+
+		// TODO
+	}
+
+	private void handleSpeechSensorAnalysis(ResourceNameEnum resource, SensorData data) {
+		_Logger.info("Analyzing speech data from " + data.getLocationID() + ". State data: " + data.getStateData());
+		// TODO this is a workaround
+		this.lastMessageLocationID = data.getLocationID();
+
+		// this is the core of ALL OUTBOUND ANTHROPIC MESSAGE LOGIC
+		// this might need to be broken into a separate module and/or handled elsewhere...
+		try {
+			JsonObject value = gson.fromJson(data.getStateData(), JsonObject.class);
+
+			// repeat logic is janky... event-driven arch would be much safer
+			if (
+				value.get("result").getAsString().length() > 0 &&
+				!value.get("result").getAsString().equals(this.lastKnownSpeechResult)
+			) {
+				// if speech detected is not a repeat and not empty
+				if (!value.get("isComplete").getAsBoolean()) {
+					_Logger.fine("Using incomplete vosk result");
+				} else {
+					_Logger.fine("Using complete vosk result");
+				}
+
+				if (enablePuetceClient) {
+					_Logger.info("Sending message to anthropic...");
+
+					// build new message
+					AnthropicContentBlock block = new AnthropicContentBlock.Text(value.get("result").getAsString());
+					ArrayList<AnthropicContentBlock> content = new ArrayList<>();
+					content.add(block);
+					AnthropicMessage newMessage = new AnthropicMessage(AnthropicRole.USER, content);
+
+					// append new message to conversation
+					this.conversation.add(newMessage);
+
+					boolean success = this.puetceClient.sendMessage(
+						conversation,
+						"You are generating a spoken response. Your " + //
+						"response should as concise as possible. Responses should " + //
+						"be plain text (no markdown). Your responses should be short " + //
+						"and conversational: 100 words or less. Your response should " + //
+						"contain no markdown syntax.",
+						true,
+						0.5f
+					);
+
+					if (!success) {
+						_Logger.severe("send message failed");
+					}
+				} else {
+					_Logger.warning("LLM client not enabled");
+				}
+			}
+
+			this.lastKnownSpeechResult = value.get("result").getAsString();
+		} catch (JsonSyntaxException e) {
+			_Logger.warning("Failed to parse json speech data: " + e);
+		}
 	}
 }

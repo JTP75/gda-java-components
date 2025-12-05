@@ -1,0 +1,19 @@
+{
+    "endpoint": "send_message",
+    "data": {
+        "sys_prompt": "This is the system prompt. Your name is Harry.",
+        "use_tools": false,
+        "randomness": 0.5,
+        "messages": [
+            {
+                "role": "user",
+                "content": [
+                    {
+                        "type": "text",
+                        "text": "Hello, whats your name?"
+                    }
+                ]
+            }
+        ]
+    }
+}

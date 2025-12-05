@@ -18,6 +18,9 @@ import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
+import com.google.gson.Gson;
+import com.google.gson.JsonObject;
+
 import programmingtheiot.common.ConfigConst;
 import programmingtheiot.common.ResourceNameEnum;
 import programmingtheiot.data.SensorData;
@@ -97,7 +100,120 @@ public class DeviceDataManagerNoCommsTest
 		
 		devDataMgr.stopManager();
 	}
+
+	/**
+	 * Test for repeat messages in speech data
+	 */
+	@Test
+	public void testSpeechSensorDataAnalysisRepeats()
+	{
+		DeviceDataManager devDataMgr = new DeviceDataManager();
+		SensorData sd1;
+		
+		devDataMgr.startManager();
+		try { Thread.sleep(2000L); } catch (InterruptedException e) {}
+		
+		_Logger.info("Handling incomplete result (1st)");
+		sd1 = new SensorData();
+		sd1.setTypeID(ConfigConst.SPEECH_SENSOR_TYPE);
+		sd1.setStateData(makeStateData("this is a partial result", "this is a partial result", false));
+		devDataMgr.handleSensorMessage(ResourceNameEnum.CDA_SENSOR_MSG_RESOURCE, sd1);
+		try { Thread.sleep(2000L); } catch (InterruptedException e) {}
+		
+		_Logger.info("Handling incomplete result (2nd)");
+		sd1 = new SensorData();
+		sd1.setTypeID(ConfigConst.SPEECH_SENSOR_TYPE);
+		sd1.setStateData(makeStateData("this is a partial result", "this is a partial result", false));
+		devDataMgr.handleSensorMessage(ResourceNameEnum.CDA_SENSOR_MSG_RESOURCE, sd1);
+		try { Thread.sleep(2000L); } catch (InterruptedException e) {}
+		
+		_Logger.info("Handling complete result (1st)");
+		sd1 = new SensorData();
+		sd1.setTypeID(ConfigConst.SPEECH_SENSOR_TYPE);
+		sd1.setStateData(makeStateData("this is a partial result", "this is a final result", true));
+		devDataMgr.handleSensorMessage(ResourceNameEnum.CDA_SENSOR_MSG_RESOURCE, sd1);
+		try { Thread.sleep(2000L); } catch (InterruptedException e) {}
+		
+		_Logger.info("Handling complete result (2nd)");
+		sd1 = new SensorData();
+		sd1.setTypeID(ConfigConst.SPEECH_SENSOR_TYPE);
+		sd1.setStateData(makeStateData("this is a partial result", "this is a final result", true));
+		devDataMgr.handleSensorMessage(ResourceNameEnum.CDA_SENSOR_MSG_RESOURCE, sd1);
+		try { Thread.sleep(2000L); } catch (InterruptedException e) {}
+		
+		devDataMgr.stopManager();
+		try { Thread.sleep(2000L); } catch (InterruptedException e) {}
+	}
 	
+	/**
+	 * Test method for running the DeviceDataManager.
+	 */
+	@Test
+	public void testSpeechSensorDataAnalysis()
+	{
+		DeviceDataManager devDataMgr = new DeviceDataManager();
+		SensorData sd1;
+		
+		devDataMgr.startManager();
+		try { Thread.sleep(2000L); } catch (InterruptedException e) {}
+
+		_Logger.info("Handling empty result");
+		sd1 = new SensorData();
+		sd1.setTypeID(ConfigConst.SPEECH_SENSOR_TYPE);
+		sd1.setStateData(makeStateData("", "", false));
+		devDataMgr.handleSensorMessage(ResourceNameEnum.CDA_SENSOR_MSG_RESOURCE, sd1);
+		try { Thread.sleep(2000L); } catch (InterruptedException e) {}
+		
+		_Logger.info("Handling partial result");
+		sd1 = new SensorData();
+		sd1.setTypeID(ConfigConst.SPEECH_SENSOR_TYPE);
+		sd1.setStateData(makeStateData("this is a partial result", "", false));
+		devDataMgr.handleSensorMessage(ResourceNameEnum.CDA_SENSOR_MSG_RESOURCE, sd1);
+		try { Thread.sleep(2000L); } catch (InterruptedException e) {}
+		
+		_Logger.info("Handling incomplete result");
+		sd1 = new SensorData();
+		sd1.setTypeID(ConfigConst.SPEECH_SENSOR_TYPE);
+		sd1.setStateData(makeStateData("this is a partial result", "this is a partial result", false));
+		devDataMgr.handleSensorMessage(ResourceNameEnum.CDA_SENSOR_MSG_RESOURCE, sd1);
+		try { Thread.sleep(2000L); } catch (InterruptedException e) {}
+		
+		_Logger.info("Handling complete result");
+		sd1 = new SensorData();
+		sd1.setTypeID(ConfigConst.SPEECH_SENSOR_TYPE);
+		sd1.setStateData(makeStateData("this is a partial result", "this is a final result", true));
+		devDataMgr.handleSensorMessage(ResourceNameEnum.CDA_SENSOR_MSG_RESOURCE, sd1);
+		try { Thread.sleep(2000L); } catch (InterruptedException e) {}
+		
+		devDataMgr.stopManager();
+		try { Thread.sleep(2000L); } catch (InterruptedException e) {}
+	}
+	
+	/**
+	 * Test single message
+	 */
+	@Test
+	public void testSpeechSensorDataAnalysisSingle()
+	{
+		DeviceDataManager devDataMgr = new DeviceDataManager();
+		SensorData sd1;
+		// String message = "What is todays message of the day";
+		String message = "What are three tasks from my task list I should do now?";
+		
+		devDataMgr.startManager();
+		try { Thread.sleep(2000L); } catch (InterruptedException e) {}
+		
+		_Logger.info("Handling incomplete result (1st)");
+		sd1 = new SensorData();
+		sd1.setTypeID(ConfigConst.SPEECH_SENSOR_TYPE);
+		sd1.setStateData(makeStateData(message, message, false));
+		devDataMgr.handleSensorMessage(ResourceNameEnum.CDA_SENSOR_MSG_RESOURCE, sd1);
+		try { Thread.sleep(60000L); } catch (InterruptedException e) {}
+		
+		devDataMgr.stopManager();
+		try { Thread.sleep(2000L); } catch (InterruptedException e) {}
+	}
+
 	/**
 	 * Test method for running the DeviceDataManager.
 	 */
@@ -162,5 +278,16 @@ public class DeviceDataManagerNoCommsTest
 		
 		devDataMgr.stopManager();
 	}
+
 	
+	private String makeStateData(String partial, String result, boolean isComplete) {
+		JsonObject stateData = new JsonObject();
+
+		stateData.addProperty("partial", partial);
+		stateData.addProperty("result", result);
+		stateData.addProperty("isComplete", isComplete);
+
+		Gson gson = new Gson();
+		return gson.toJson(stateData);
+	}
 }

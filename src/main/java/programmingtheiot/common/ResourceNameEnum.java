@@ -51,8 +51,15 @@ public enum ResourceNameEnum
 	GDA_REGISTRATION_REQUEST_RESOURCE(
 		ConfigConst.PRODUCT_NAME, ConfigConst.GATEWAY_DEVICE, ConfigConst.RESOURCE_REGISTRATION_REQUEST, false, false),
 	GDA_SYSTEM_PERF_MSG_RESOURCE(
-		ConfigConst.PRODUCT_NAME, ConfigConst.GATEWAY_DEVICE, ConfigConst.SYSTEM_PERF_MSG, false, false);
+		ConfigConst.PRODUCT_NAME, ConfigConst.GATEWAY_DEVICE, ConfigConst.SYSTEM_PERF_MSG, false, false),
 	
+	GDA_MESSAGE_PUETCE_RESOURCE(
+		ConfigConst.PUETCE_CONNECT, ConfigConst.PUETCE_CHAT, ConfigConst.PUETCE_MSG, true, false),
+	GDA_EXECUTE_TOOL_PUETCE_RESOURCE(
+		ConfigConst.PUETCE_TOOLS, ConfigConst.PUETCE_EXECUTE, null, true, false),
+		
+	;
+
 	private static final HashMap<String, ResourceNameEnum> _ResourceNameLookupMap = new HashMap<>();
 	
 	static {
@@ -108,7 +115,8 @@ public enum ResourceNameEnum
 	 */
 	private ResourceNameEnum(String productName, String deviceName, String resourceType, boolean isLocalToGda, boolean isObservable)
 	{
-		this.resourceName = productName + "/" + deviceName + "/" + resourceType;
+		this.resourceName = productName + "/" + deviceName;
+		if (resourceType != null) { this.resourceName = this.resourceName + "/" + resourceType; }
 		this.productName = productName;
 		this.deviceName = deviceName;
 		this.resourceType = resourceType;
