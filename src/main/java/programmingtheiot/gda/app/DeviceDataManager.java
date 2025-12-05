@@ -103,6 +103,7 @@ public class DeviceDataManager extends JedisPubSub implements IDataMessageListen
 	// private state vars
 
 	private ActuatorData latestHumidifierActuatorResponse = null;
+	private String lastLocationID = "";
 	private String lastMessageLocationID = "";
 	private String lastToolID = "";
 	private int lastKnownHumidifierCommand = ConfigConst.OFF_COMMAND;
@@ -229,7 +230,7 @@ public class DeviceDataManager extends JedisPubSub implements IDataMessageListen
 			int qos = ConfigConst.DEFAULT_QOS;
 			
 			// TODO optionally preprocess actuator data
-			data.setLocationID(this.lastMessageLocationID);
+			data.setLocationID(this.lastLocationID);
 
 			this.sendActuatorCommandtoCda(resourceName, data);
 			return true;
