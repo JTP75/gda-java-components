@@ -82,6 +82,8 @@ public class DeviceDataManager extends JedisPubSub implements IDataMessageListen
 	private float   nominalHumiditySetting   = 40.0f;
 	private float   triggerHumidifierFloor   = 30.0f;
 	private float   triggerHumidifierCeiling = 50.0f;
+
+	private String lastLocationID = null;
 	
 	// constructors
 	
@@ -187,6 +189,7 @@ public class DeviceDataManager extends JedisPubSub implements IDataMessageListen
 			int qos = ConfigConst.DEFAULT_QOS;
 			
 			// TODO optionally preprocess actuator data
+			data.setLocationID(this.lastLocationID);
 
 			this.sendActuatorCommandtoCda(resourceName, data);
 			return true;
@@ -198,7 +201,25 @@ public class DeviceDataManager extends JedisPubSub implements IDataMessageListen
 	public boolean handleIncomingMessage(ResourceNameEnum resourceName, String msg)
 	{
 		if (msg != null) {
-			_Logger.info("Handling Generic Message: " + msg);
+			_Logger.info("Handling Generic Message: " + resourceName.getResourceName());
+
+            switch (resourceName) {
+            // case GDA_MESSAGE_PUETCE_RESOURCE: 
+            // 	LLMHttpResponse response = gson.fromJson(msg, LLMHttpResponse.class);
+			// 	AnthropicMessage message = gson.fromJson(response.data, AnthropicMessage.class);
+			// 	handleMessagesResponse(resourceName, message);
+            //     break;
+			// case GDA_EXECUTE_TOOL_PUETCE_RESOURCE:
+            // 	LLMHttpResponse response = gson.fromJson(msg, LLMHttpResponse.class);
+			// 	String result = response.data.get("value").getAsString();
+			// 	handleExecuteToolResponse(resourceName, result);
+			// 	break;
+			case CDA_ACTUATOR_CMD_RESOURCE:
+				return handleCloudActuatorCommand(resourceName, msg);
+            default: 
+                break;
+            }
+
 			return true;
 		}
 		return false;
@@ -209,6 +230,8 @@ public class DeviceDataManager extends JedisPubSub implements IDataMessageListen
 	{
 		if (data != null) {
 			_Logger.info("Handling Sensor Message: " + data.getName());
+			this.lastLocationID = data.getLocationID();
+
 			if (data.hasError()) { _Logger.warning("Error in Sensor Data"); }
 			
 			String jsonData = DataUtil.getInstance().sensorDataToJson(data);
@@ -529,5 +552,23 @@ public class DeviceDataManager extends JedisPubSub implements IDataMessageListen
 		}
 		
 		return odt;
+	}
+
+	private boolean handleCloudActuatorCommand(ResourceNameEnum resource, String msg) {
+		ActuatorData data = DataUtil.getInstance().jsonToActuatorData(msg);
+		String json = DataUtil.getInstance().actuatorDataToJson(data);
+
+		int qos = ConfigUtil.getInstance().getInteger(
+			ConfigConst.MQTT_GATEWAY_SERVICE, 
+			ConfigConst.DEFAULT_QOS_KEY, 
+			ConfigConst.DEFAULT_QOS
+		);
+		if (this.mqttClient != null) {
+			_Logger.fine("Publishing data to broker");
+			return this.mqttClient.publishMessage(resource, json, qos);
+		} else {
+			_Logger.warning("No mqtt client to publish to");
+			return true;
+		}
 	}
 }

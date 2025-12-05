@@ -6,6 +6,7 @@ import org.eclipse.paho.client.mqttv3.IMqttMessageListener;
 import org.eclipse.paho.client.mqttv3.MqttMessage;
 
 import programmingtheiot.common.ConfigConst;
+import programmingtheiot.common.ConfigUtil;
 import programmingtheiot.common.IDataMessageListener;
 import programmingtheiot.common.ResourceNameEnum;
 import programmingtheiot.data.ActuatorData;
@@ -52,10 +53,12 @@ public class LedEnablementMessageListener implements IMqttMessageListener
             switch (value) {
             case ConfigConst.ON_COMMAND:
                 _Logger.info("Received LED actuator command: [ON]");
+                data.setCommand(ConfigConst.ON_COMMAND);
                 data.setStateData("LED Switching ON");
                 break;
             case ConfigConst.OFF_COMMAND:
                 _Logger.info("Received LED actuator command: [OFF]");
+                data.setCommand(ConfigConst.OFF_COMMAND);
                 data.setStateData("LED Switching OFF");
                 break;
             default:

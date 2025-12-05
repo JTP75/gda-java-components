@@ -253,7 +253,7 @@ public class MqttClientConnector implements IPubSubClient, MqttCallbackExtended
 					SensorData sd = DataUtil.getInstance()
 						.jsonToSensorData(new String(msg.getPayload()));
 					this.dataMsgListener.handleSensorMessage(
-						ResourceNameEnum.CDA_ACTUATOR_RESPONSE_RESOURCE, sd
+						ResourceNameEnum.CDA_SENSOR_MSG_RESOURCE, sd
 					);
 					return;
 			
@@ -261,7 +261,7 @@ public class MqttClientConnector implements IPubSubClient, MqttCallbackExtended
 					SystemPerformanceData spd = DataUtil.getInstance()
 						.jsonToSystemPerformanceData(new String(msg.getPayload()));
 					this.dataMsgListener.handleSystemPerformanceMessage(
-						ResourceNameEnum.CDA_ACTUATOR_RESPONSE_RESOURCE, spd
+						ResourceNameEnum.CDA_SYSTEM_PERF_MSG_RESOURCE, spd
 					);
 					return;
 			

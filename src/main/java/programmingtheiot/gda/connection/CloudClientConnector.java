@@ -174,7 +174,7 @@ public class CloudClientConnector implements ICloudClient, IConnectionListener
 		data.setName(ConfigConst.LED_ACTUATOR_NAME);
 		data.setValue((float) -1.0);
 
-		String ledTopic = createTopicName(ResourceNameEnum.CDA_ACTUATOR_CMD_RESOURCE.getDeviceName(), data.getName());
+		String ledTopic = createTopicName(ResourceNameEnum.CDA_ACTUATOR_CMD_RESOURCE, data.getName());
 
 		String json = DataUtil.getInstance().actuatorDataToTVJson(data);
 
