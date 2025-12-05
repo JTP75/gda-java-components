@@ -91,7 +91,7 @@ public class DeviceDataManagerWithCommsTest
 		try { Thread.sleep(1000L); } catch (InterruptedException e) {}
 		
 		try {
-			Thread.sleep(300000L);
+			Thread.sleep(600000L);
 		} catch (InterruptedException e) {
 			// ignore
 		}

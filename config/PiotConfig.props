@@ -78,6 +78,7 @@ enableCrypt = False
 [Puetce.GatewayService]
 host = localhost
 port = 8081
+verboseToolExecutions = False
 
 #
 # GDA specific configuration information

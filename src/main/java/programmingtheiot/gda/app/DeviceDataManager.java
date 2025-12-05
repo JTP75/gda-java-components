@@ -93,8 +93,10 @@ public class DeviceDataManager extends JedisPubSub implements IDataMessageListen
 	private SensorData     latestHumiditySensorData = null;
 	private OffsetDateTime latestHumiditySensorTimeStamp = null;
 
-	private boolean handleHumidityChangeOnDevice = false;
 	
+	private boolean handleHumidityChangeOnDevice = false;
+	private boolean useVerboseToolExecutions = false;
+
 	private long    humidityMaxTimePastThreshold = 300; // seconds
 	private float   nominalHumiditySetting   = 40.0f;
 	private float   triggerHumidifierFloor   = 30.0f;
@@ -130,6 +132,8 @@ public class DeviceDataManager extends JedisPubSub implements IDataMessageListen
 		this.enablePuetceClient = configUtil.getBoolean(ConfigConst.GATEWAY_DEVICE, ConfigConst.ENABLE_PUETCE_CLIENT_KEY);
 
 		this.enableSystemPerf = configUtil.getBoolean(ConfigConst.GATEWAY_DEVICE, ConfigConst.ENABLE_SYSTEM_PERF_KEY);
+
+		this.useVerboseToolExecutions = configUtil.getBoolean(ConfigConst.PUETCE_GATEWAY_SERVICE, ConfigConst.VERBOSE_TOOL_EXECUTIONS_KEY);
 
 		this.humidityMaxTimePastThreshold = configUtil.getInteger(ConfigConst.GATEWAY_DEVICE, ConfigConst.HUMID_MAX_TIME_PAST_THRESH_KEY, 300);
 		this.nominalHumiditySetting = configUtil.getFloat(ConfigConst.GATEWAY_DEVICE, ConfigConst.NOMINAL_HUMID_KEY, 40.0f);
@@ -243,7 +247,9 @@ public class DeviceDataManager extends JedisPubSub implements IDataMessageListen
 	{
 		if (msg != null) {
 			_Logger.info("Handling Generic Message: " + resourceName.getResourceName());
+			msg = msg.replace("null", "\"\"");
             LLMHttpResponse response = gson.fromJson(msg, LLMHttpResponse.class);
+			_Logger.info("Deserialized message" + resourceName.getResourceName());
 
             switch (resourceName) {
             case GDA_MESSAGE_PUETCE_RESOURCE: 
@@ -625,7 +631,8 @@ public class DeviceDataManager extends JedisPubSub implements IDataMessageListen
 	}
 
 	private void handleMessagesResponse(ResourceNameEnum resource, AnthropicMessage message) {
-		_Logger.info("Handling response from anthropic: " + resource.getResourceName());
+		_Logger.info("Handling response from anthropic: " + resource.getResourceName() 
+			+ " (" + message.content.size() + " content block(s))");
 
 		// entry point for anthropic response logic
 		// 	- tool uses need to be handled here
@@ -638,33 +645,39 @@ public class DeviceDataManager extends JedisPubSub implements IDataMessageListen
 		}
 		this.conversation.add(message); // TODO hide tool use and tool results
 
+		boolean containsToolUse = message.content.stream().anyMatch(block -> block instanceof AnthropicContentBlock.ToolUse);
+
 		message.content.forEach(block -> {
 			if (block instanceof AnthropicContentBlock.Text) {
 				_Logger.info("Handling text response");
 				AnthropicContentBlock.Text textBlock = (AnthropicContentBlock.Text)block;
 
-				// say the response
-				ActuatorData ad = new ActuatorData();
-				ad.setName(ConfigConst.TTS_ACTUATOR_NAME);
-				ad.setTypeID(ConfigConst.TTS_ACTUATOR_TYPE);
-				ad.setCommand(ConfigConst.ON_COMMAND);
-				ad.setLocationID(this.lastMessageLocationID);
-				ad.setStateData(textBlock.text);
+				if (!containsToolUse || useVerboseToolExecutions) {
+					// say the response
+					ActuatorData ad = new ActuatorData();
+					ad.setName(ConfigConst.TTS_ACTUATOR_NAME);
+					ad.setTypeID(ConfigConst.TTS_ACTUATOR_TYPE);
+					ad.setCommand(ConfigConst.ON_COMMAND);
+					ad.setLocationID(this.lastMessageLocationID);
+					ad.setStateData(textBlock.text);
 
-				sendActuatorCommandtoCda(ResourceNameEnum.CDA_ACTUATOR_CMD_RESOURCE, ad);
+					sendActuatorCommandtoCda(ResourceNameEnum.CDA_ACTUATOR_CMD_RESOURCE, ad);
+				}
 			} else if (block instanceof AnthropicContentBlock.ToolUse) {
 				_Logger.info("Handling tool_use response");
 				AnthropicContentBlock.ToolUse toolUseBlock = (AnthropicContentBlock.ToolUse)block;
 
-				// say executing tool
-				ActuatorData ad = new ActuatorData();
-				ad.setName(ConfigConst.TTS_ACTUATOR_NAME);
-				ad.setTypeID(ConfigConst.TTS_ACTUATOR_TYPE);
-				ad.setCommand(ConfigConst.ON_COMMAND);
-				ad.setLocationID(this.lastMessageLocationID);
-				ad.setStateData("Executing " + toolUseBlock.name);
+				if (useVerboseToolExecutions) {
+					// say executing tool
+					ActuatorData ad = new ActuatorData();
+					ad.setName(ConfigConst.TTS_ACTUATOR_NAME);
+					ad.setTypeID(ConfigConst.TTS_ACTUATOR_TYPE);
+					ad.setCommand(ConfigConst.ON_COMMAND);
+					ad.setLocationID(this.lastMessageLocationID);
+					ad.setStateData("Executing " + toolUseBlock.name);
 
-				sendActuatorCommandtoCda(ResourceNameEnum.CDA_ACTUATOR_CMD_RESOURCE, ad);
+					sendActuatorCommandtoCda(ResourceNameEnum.CDA_ACTUATOR_CMD_RESOURCE, ad);
+				}
 
 				// execute tool
 				this.lastToolID = toolUseBlock.id;
@@ -731,30 +744,45 @@ public class DeviceDataManager extends JedisPubSub implements IDataMessageListen
 				}
 
 				if (enablePuetceClient) {
-					_Logger.info("Sending message to anthropic...");
+					if (value.get("result").getAsString().toLowerCase().trim().equals("reset")) {
+						_Logger.info("Reset conversation...");
 
-					// build new message
-					AnthropicContentBlock block = new AnthropicContentBlock.Text(value.get("result").getAsString());
-					ArrayList<AnthropicContentBlock> content = new ArrayList<>();
-					content.add(block);
-					AnthropicMessage newMessage = new AnthropicMessage(AnthropicRole.USER, content);
+						this.conversation.clear();
 
-					// append new message to conversation
-					this.conversation.add(newMessage);
+						ActuatorData ad = new ActuatorData();
+						ad.setName(ConfigConst.TTS_ACTUATOR_NAME);
+						ad.setTypeID(ConfigConst.TTS_ACTUATOR_TYPE);
+						ad.setCommand(ConfigConst.ON_COMMAND);
+						ad.setLocationID(this.lastMessageLocationID);
+						ad.setStateData("Conversation reset");
 
-					boolean success = this.puetceClient.sendMessage(
-						conversation,
-						"You are generating a spoken response. Your " + //
-						"response should as concise as possible. Responses should " + //
-						"be plain text (no markdown). Your responses should be short " + //
-						"and conversational: 100 words or less. Your response should " + //
-						"contain no markdown syntax.",
-						true,
-						0.5f
-					);
+						sendActuatorCommandtoCda(ResourceNameEnum.CDA_ACTUATOR_CMD_RESOURCE, ad);
+					} else {
+						_Logger.info("Sending message to anthropic...");
 
-					if (!success) {
-						_Logger.severe("send message failed");
+						// build new message
+						AnthropicContentBlock block = new AnthropicContentBlock.Text(value.get("result").getAsString());
+						ArrayList<AnthropicContentBlock> content = new ArrayList<>();
+						content.add(block);
+						AnthropicMessage newMessage = new AnthropicMessage(AnthropicRole.USER, content);
+
+						// append new message to conversation
+						this.conversation.add(newMessage);
+
+						boolean success = this.puetceClient.sendMessage(
+							conversation,
+							"You are generating a spoken response. Your " + //
+							"response should as concise as possible. Responses should " + //
+							"be plain text (no markdown). Your responses should be short " + //
+							"and conversational: 100 words or less. Your response should " + //
+							"contain no markdown syntax.",
+							true,
+							0.5f
+						);
+
+						if (!success) {
+							_Logger.severe("send message failed");
+						}
 					}
 				} else {
 					_Logger.warning("LLM client not enabled");

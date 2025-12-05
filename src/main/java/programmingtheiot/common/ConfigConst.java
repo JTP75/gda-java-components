@@ -314,6 +314,8 @@ public class ConfigConst
 	public static final String TRIGGER_HUMID_FLOOR_KEY 			= "triggerHumidifierFloor";
 	public static final String TRIGGER_HUMID_CEIL_KEY 			= "triggerHumidifierCeiling";
 	
+	public static final String VERBOSE_TOOL_EXECUTIONS_KEY		= "verboseToolExecutions";
+	
 	// constructors
 	
 	/**
