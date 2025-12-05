@@ -229,6 +229,7 @@ public class DeviceDataManager extends JedisPubSub implements IDataMessageListen
 			int qos = ConfigConst.DEFAULT_QOS;
 			
 			// TODO optionally preprocess actuator data
+			data.setLocationID(this.lastMessageLocationID);
 
 			this.sendActuatorCommandtoCda(resourceName, data);
 			return true;
@@ -252,6 +253,8 @@ public class DeviceDataManager extends JedisPubSub implements IDataMessageListen
 				String result = response.data.get("value").getAsString();
 				handleExecuteToolResponse(resourceName, result);
 				break;
+			case CDA_ACTUATOR_CMD_RESOURCE:
+				return handleCloudActuatorCommand(resourceName, msg);
             default: 
                 break;
             }
@@ -266,6 +269,8 @@ public class DeviceDataManager extends JedisPubSub implements IDataMessageListen
 	{
 		if (data != null) {
 			_Logger.info("Handling Sensor Message: " + data.getName());
+			this.lastLocationID = data.getLocationID();
+
 			if (data.hasError()) { _Logger.warning("Error in Sensor Data"); }
 			
 			String jsonData = DataUtil.getInstance().sensorDataToJson(data);
@@ -329,8 +334,16 @@ public class DeviceDataManager extends JedisPubSub implements IDataMessageListen
 	{
 		_Logger.info("Starting DeviceDataManager...");
 
-		if (this.systemPerfMgr != null) { this.systemPerfMgr.startManager(); }
-		if (this.persistenceClient != null) { this.persistenceClient.connectClient(); }
+		if (this.cloudClient != null) {
+			if (this.cloudClient.connectClient()) {
+				_Logger.info("Cloud client connected");
+			} else {
+				_Logger.severe("Cloud client failed to connect");
+			}
+		}
+		if (this.persistenceClient != null) {
+			this.persistenceClient.connectClient();
+		}
 		if (this.mqttClient != null) {
 			if (this.mqttClient.connectClient()) {
 				_Logger.info("Successfully connected to MQTT broker.");
@@ -356,13 +369,7 @@ public class DeviceDataManager extends JedisPubSub implements IDataMessageListen
 				_Logger.severe("Failed to start CoAP server. Check log file for details.");
 			}
 		}
-		if (this.cloudClient != null) {
-			if (this.cloudClient.connectClient()) {
-				_Logger.info("Cloud client connected");
-			} else {
-				_Logger.severe("Cloud client failed to connect");
-			}
-		}
+		if (this.systemPerfMgr != null) { this.systemPerfMgr.startManager(); }
 
 		_Logger.info("DeviceDataManager started");
 	}
@@ -596,6 +603,24 @@ public class DeviceDataManager extends JedisPubSub implements IDataMessageListen
 		}
 		
 		return odt;
+	}
+
+	private boolean handleCloudActuatorCommand(ResourceNameEnum resource, String msg) {
+		ActuatorData data = DataUtil.getInstance().jsonToActuatorData(msg);
+		String json = DataUtil.getInstance().actuatorDataToJson(data);
+
+		int qos = ConfigUtil.getInstance().getInteger(
+			ConfigConst.MQTT_GATEWAY_SERVICE, 
+			ConfigConst.DEFAULT_QOS_KEY, 
+			ConfigConst.DEFAULT_QOS
+		);
+		if (this.mqttClient != null) {
+			_Logger.fine("Publishing data to broker");
+			return this.mqttClient.publishMessage(resource, json, qos);
+		} else {
+			_Logger.warning("No mqtt client to publish to");
+			return true;
+		}
 	}
 
 	private void handleMessagesResponse(ResourceNameEnum resource, AnthropicMessage message) {

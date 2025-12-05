@@ -181,9 +181,8 @@ public class MqttClientConnector implements IPubSubClient, MqttCallbackExtended
 	public boolean setConnectionListener(IConnectionListener listener)
 	{
 		if (listener != null) {
-			_Logger.info("Setting connection listener...");
+			_Logger.info("Setting connection listener");
 			this.connectionListener = listener;
-			_Logger.info("Connection listener set");
 			return true;
 		} else {
 			_Logger.warning("No connection listener specified");
@@ -254,7 +253,7 @@ public class MqttClientConnector implements IPubSubClient, MqttCallbackExtended
 					SensorData sd = DataUtil.getInstance()
 						.jsonToSensorData(new String(msg.getPayload()));
 					this.dataMsgListener.handleSensorMessage(
-						ResourceNameEnum.CDA_ACTUATOR_RESPONSE_RESOURCE, sd
+						ResourceNameEnum.CDA_SENSOR_MSG_RESOURCE, sd
 					);
 					return;
 			
@@ -262,7 +261,7 @@ public class MqttClientConnector implements IPubSubClient, MqttCallbackExtended
 					SystemPerformanceData spd = DataUtil.getInstance()
 						.jsonToSystemPerformanceData(new String(msg.getPayload()));
 					this.dataMsgListener.handleSystemPerformanceMessage(
-						ResourceNameEnum.CDA_ACTUATOR_RESPONSE_RESOURCE, spd
+						ResourceNameEnum.CDA_SYSTEM_PERF_MSG_RESOURCE, spd
 					);
 					return;
 			
@@ -436,14 +435,18 @@ public class MqttClientConnector implements IPubSubClient, MqttCallbackExtended
 			_Logger.info("Checking credential file...");
 			Properties props = cu.getCredentials(configSectionName);
 			if (props!=null) {
-				this.connOptions.setUserName(cu.getProperty(ConfigConst.USER_NAME_TOKEN_KEY, ""));
-				this.connOptions.setPassword(cu.getProperty(ConfigConst.USER_AUTH_TOKEN_KEY, "").toCharArray());
+				String username = props.getProperty(ConfigConst.USER_NAME_TOKEN_KEY, "");
+				String password = props.getProperty(ConfigConst.USER_AUTH_TOKEN_KEY, "");
+
+				this.connOptions.setUserName(username);
+				this.connOptions.setPassword(password.toCharArray());
+
 				_Logger.info("Credentials set");
 			} else {
 				_Logger.warning("No credentials set");
 			}
 		} catch (Exception e) {
-			_Logger.log(Level.SEVERE, "No credential file.");
+			_Logger.log(Level.SEVERE, "Credential loading failed.");
 			throw e;
 		}
 	}

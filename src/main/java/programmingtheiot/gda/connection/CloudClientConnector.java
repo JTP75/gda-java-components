@@ -18,6 +18,7 @@ import programmingtheiot.common.ConfigConst;
 import programmingtheiot.common.ConfigUtil;
 import programmingtheiot.common.IDataMessageListener;
 import programmingtheiot.common.ResourceNameEnum;
+import programmingtheiot.data.ActuatorData;
 import programmingtheiot.data.DataUtil;
 import programmingtheiot.data.SensorData;
 import programmingtheiot.data.SystemPerformanceData;
@@ -27,7 +28,7 @@ import programmingtheiot.data.SystemPerformanceData;
  *
  */
 @SuppressWarnings("unused")
-public class CloudClientConnector implements ICloudClient
+public class CloudClientConnector implements ICloudClient, IConnectionListener
 {
 	// static
 	
@@ -64,6 +65,10 @@ public class CloudClientConnector implements ICloudClient
 	{
 		if (this.mqtt == null) {
 			this.mqtt = new MqttClientConnector(ConfigConst.CLOUD_GATEWAY_SERVICE);
+			if (this.listener != null) {
+				this.mqtt.setDataMessageListener(this.listener);
+				this.mqtt.setConnectionListener(this);
+			}
 		}
 
 		return mqtt.connectClient();
@@ -80,6 +85,10 @@ public class CloudClientConnector implements ICloudClient
 	@Override
 	public boolean setDataMessageListener(IDataMessageListener listener)
 	{
+		if (listener != null) {
+			this.listener = listener;
+			return true;
+		}
 		return false;
 	}
 
@@ -153,7 +162,31 @@ public class CloudClientConnector implements ICloudClient
 			return false;
 		}
 	}
-	
+
+	@Override
+	public void onConnect() {
+		_Logger.info("Handling CSP subscriptions...");
+		
+		LedEnablementMessageListener ledListener = new LedEnablementMessageListener(this.listener);
+
+		ActuatorData data = new ActuatorData();
+		data.setAsResponse();
+		data.setName(ConfigConst.LED_ACTUATOR_NAME);
+		data.setValue((float) -1.0);
+
+		String ledTopic = createTopicName(ResourceNameEnum.CDA_ACTUATOR_CMD_RESOURCE, data.getName());
+
+		String json = DataUtil.getInstance().actuatorDataToTVJson(data);
+
+		this.publishMessageToCloud(ledTopic, json);
+
+		this.mqtt.subscribeToTopic(ledTopic, qos, ledListener);
+	}
+
+	@Override
+	public void onDisconnect() {
+		_Logger.info("Disconnected");
+	}
 	
 	// private methods
 	
@@ -162,14 +195,31 @@ public class CloudClientConnector implements ICloudClient
 		return createTopicName(resource.getDeviceName(), resource.getResourceType());
 	}
 
+	private String createTopicName(ResourceNameEnum resource, String itemName)
+	{
+		return (createTopicName(resource) + "-" + itemName).toLowerCase();
+	}
+
 	private String createTopicName(String deviceName, String typeName)
 	{
-		return prefix + deviceName + "/" + typeName;
+		StringBuilder builder = new StringBuilder();
+
+		if (deviceName!=null && deviceName.trim().length()>0) {
+			builder.append(prefix);
+			builder.append(deviceName);
+		}
+
+		if (typeName!=null && typeName.trim().length()>0) {
+			builder.append('/');
+			builder.append(typeName);
+		}
+
+		return builder.toString().toLowerCase();
 	}
 
 	private boolean publishMessageToCloud(ResourceNameEnum resource, String itemName, String payload)
 	{
-		String topic = createTopicName(resource) + "-" + itemName;
+		String topic = createTopicName(resource, itemName);
 
 		return publishMessageToCloud(topic, payload);
 	}
@@ -177,7 +227,12 @@ public class CloudClientConnector implements ICloudClient
 	private boolean publishMessageToCloud(String topic, String payload)
 	{
 		try {
-			_Logger.fine("Publishing payload to CSP topic: " + topic);
+			if (!this.mqtt.isConnected()) {
+				_Logger.warning("MQTT client is not connected to broker");
+				return false;
+			}
+
+			_Logger.info("Publishing payload to CSP topic: " + topic);
 
 			// TODO this is where throttling will go (if necessary)
 
