@@ -432,7 +432,7 @@ public class DeviceDataManager extends JedisPubSub implements IDataMessageListen
 	// private void handleIncomingMessage(ResourceNameEnum resource, SystemPerformanceData data) { ...
 
 	private void handleUpstreamTransmission(ResourceNameEnum resource, String jsonData, int qos) {
-		throw new NotImplementedError("dont use this");
+		// throw new NotImplementedError("dont use this");
 
 		// _Logger.info("Sending JSON data to CSP: " + resource);
 
