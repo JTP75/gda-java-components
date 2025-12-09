@@ -26,6 +26,9 @@ public class LLMHttpResponseDeserializer implements JsonDeserializer<LLMHttpResp
         if (element.isJsonPrimitive()) {
             data = new JsonObject();
             data.addProperty("value", element.getAsString());
+        } else if (element.isJsonArray()) {
+            data = new JsonObject();
+            data.add("value", element.getAsJsonArray());
         } else {
             data = element.getAsJsonObject();
         }

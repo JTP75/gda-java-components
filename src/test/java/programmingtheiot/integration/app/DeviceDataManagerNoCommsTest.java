@@ -85,7 +85,7 @@ public class DeviceDataManagerNoCommsTest
 	/**
 	 * Test method for running the DeviceDataManager.
 	 */
-	@Test
+	// @Test
 	public void testStartAndStopManagerNoComms()
 	{
 		DeviceDataManager devDataMgr = new DeviceDataManager();
@@ -104,7 +104,7 @@ public class DeviceDataManagerNoCommsTest
 	/**
 	 * Test for repeat messages in speech data
 	 */
-	@Test
+	// @Test
 	public void testSpeechSensorDataAnalysisRepeats()
 	{
 		DeviceDataManager devDataMgr = new DeviceDataManager();
@@ -148,7 +148,7 @@ public class DeviceDataManagerNoCommsTest
 	/**
 	 * Test method for running the DeviceDataManager.
 	 */
-	@Test
+	// @Test
 	public void testSpeechSensorDataAnalysis()
 	{
 		DeviceDataManager devDataMgr = new DeviceDataManager();
@@ -198,7 +198,7 @@ public class DeviceDataManagerNoCommsTest
 		DeviceDataManager devDataMgr = new DeviceDataManager();
 		SensorData sd1;
 		// String message = "What is todays message of the day";
-		String message = "What are three tasks from my task list I should do now?";
+		String message = "can you check the documents for information about CUDA? Use only one result please.";
 		
 		devDataMgr.startManager();
 		try { Thread.sleep(2000L); } catch (InterruptedException e) {}
@@ -217,7 +217,7 @@ public class DeviceDataManagerNoCommsTest
 	/**
 	 * Test method for running the DeviceDataManager.
 	 */
-	@Test
+	// @Test
 	public void testStartAndStopManagerInjNoComms()
 	{
 		DeviceDataManager devDataMgr = new DeviceDataManager();

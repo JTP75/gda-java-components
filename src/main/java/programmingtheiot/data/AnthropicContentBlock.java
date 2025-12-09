@@ -27,8 +27,10 @@ public abstract class AnthropicContentBlock {
         @SerializedName("tool_use_id")
         public String toolUseId;
         public List<ToolResultContentBlock> content;
-        public ToolResult(String toolUseId, List<ToolResultContentBlock> content) { 
-            this.toolUseId = toolUseId; this.content = content;
+        @SerializedName("is_error")
+        public boolean isError;
+        public ToolResult(String toolUseId, List<ToolResultContentBlock> content, boolean isError) { 
+            this.toolUseId = toolUseId; this.content = content; this.isError = isError;
         }
     }
 }

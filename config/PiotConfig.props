@@ -90,7 +90,7 @@ pollCycleSecs                   = 60
 enableMqttClient                = True
 enableCoapServer                = False
 enableCoapClient                = False
-enableCloudClient               = True
+enableCloudClient               = False
 enableSmtpClient                = False
 enablePersistenceClient         = False
 enablePuetceClient              = True
@@ -98,7 +98,7 @@ enableSystemPerformance         = True
 testGdaDataPath                 = /tmp/gda-data
 testCdaDataPath                 = /tmp/cda-data
 testEmptyApp                    = False
-runForever                      = True
+enableRunForever                = True
 
 handleHumidityChangeOnDevice    = True
 humidityMaxTimePastThreshold    = 10

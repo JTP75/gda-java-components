@@ -66,6 +66,17 @@ public class GatewayDeviceApp
 	 */
 	public static void main(String[] args)
 	{
+		Level level = Level.INFO;
+
+		Logger.getLogger("").setLevel(level);
+		for (var handler : Logger.getLogger("").getHandlers()) {
+			handler.setLevel(level);
+		}
+
+		boolean runForever =
+			ConfigUtil.getInstance().getBoolean(ConfigConst.GATEWAY_DEVICE, ConfigConst.ENABLE_RUN_FOREVER_KEY);
+		_Logger.info("Run forever: " + runForever);
+
 		Map<String, String> argMap = parseArgs(args);
 
 		if (argMap.containsKey(ConfigConst.CONFIG_FILE_KEY)) {
@@ -75,17 +86,15 @@ public class GatewayDeviceApp
 		GatewayDeviceApp gwApp = new GatewayDeviceApp();
 		
 		gwApp.startApp();
-		
-		boolean runForever =
-			ConfigUtil.getInstance().getBoolean(ConfigConst.GATEWAY_DEVICE, ConfigConst.ENABLE_RUN_FOREVER_KEY);
-		
+		try { Thread.sleep(1000L); } catch (InterruptedException e) {}
+
 		if (runForever) {
 			try {
 				while (true) {
 					Thread.sleep(2000L);
 				}
 			} catch (InterruptedException e) {
-				// ignore
+				_Logger.info("Interrupted. Exiting");
 			}
 			
 			gwApp.stopApp(0);
@@ -93,7 +102,7 @@ public class GatewayDeviceApp
 			try {
 				Thread.sleep(DEFAULT_TEST_RUNTIME);
 			} catch (InterruptedException e) {
-				// ignore
+				_Logger.info("Interrupted. Exiting");
 			}
 			
 			gwApp.stopApp(0);
