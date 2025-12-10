@@ -11,6 +11,7 @@
 
 package programmingtheiot.gda.app;
 
+import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
@@ -100,12 +101,15 @@ public class DeviceDataManager extends JedisPubSub implements IDataMessageListen
 	private PuetceClientConnector puetceClient = null;
 
 	private SystemPerformanceManager systemPerfMgr = null;
-
-	private ActuatorData   latestHumidifierActuatorData = null;
-	private SensorData     latestHumiditySensorData = null;
-	private OffsetDateTime latestHumiditySensorTimeStamp = null;
-
 	
+	private SensorData latestTemperatureSensorData = null;
+	private SensorData latestHumiditySensorData = null;
+	private SensorData latestPressureSensorData = null;
+	
+	private ActuatorData   	latestHumidifierActuatorData = null;
+	private SensorData 		prevLatestHumiditySensorData = null;
+	private OffsetDateTime 	latestHumiditySensorTimeStamp = null;
+
 	private boolean handleHumidityChangeOnDevice = false;
 	private boolean useVerboseToolExecutions = false;
 
@@ -456,8 +460,24 @@ public class DeviceDataManager extends JedisPubSub implements IDataMessageListen
 
 	private void handleIncomingMessage(ResourceNameEnum resource, SensorData data) {
 		switch (data.getTypeID()) {
+		case ConfigConst.TEMP_SENSOR_TYPE:
+			if (this.latestTemperatureSensorData==null) {
+				this.latestTemperatureSensorData = new SensorData();
+			}
+			this.latestTemperatureSensorData.updateData(data);
+			break;
 		case ConfigConst.HUMIDITY_SENSOR_TYPE:
+			if (this.latestHumiditySensorData==null) {
+				this.latestHumiditySensorData = new SensorData();
+			}
+			this.latestHumiditySensorData.updateData(data);
 			handleHumiditySensorAnalysis(resource, data);
+			break;
+		case ConfigConst.PRESSURE_SENSOR_TYPE:
+			if (this.latestPressureSensorData==null) {
+				this.latestPressureSensorData = new SensorData();
+			}
+			this.latestPressureSensorData.updateData(data);
 			break;
 		case ConfigConst.SPEECH_SENSOR_TYPE:
 			handleSpeechSensorAnalysis(resource, data);
@@ -502,11 +522,11 @@ public class DeviceDataManager extends JedisPubSub implements IDataMessageListen
 
 			_Logger.info("Humidity data from CDA exceeds nominal range.");
 			
-			if (this.latestHumiditySensorData == null) {
+			if (this.prevLatestHumiditySensorData == null) {
 
 				// set properties then exit
 				// wait for a second sample
-				this.latestHumiditySensorData = data;
+				this.prevLatestHumiditySensorData = data;
 				this.latestHumiditySensorTimeStamp = getDateTimeFromData(data);
 				
 				_Logger.info(
@@ -550,7 +570,7 @@ public class DeviceDataManager extends JedisPubSub implements IDataMessageListen
 					
 					// set ActuatorData and reset SensorData (and timestamp)
 					this.latestHumidifierActuatorData = ad;
-					this.latestHumiditySensorData = null;
+					this.prevLatestHumiditySensorData = null;
 					this.latestHumiditySensorTimeStamp = null;
 
 				}
@@ -574,7 +594,7 @@ public class DeviceDataManager extends JedisPubSub implements IDataMessageListen
 					// reset ActuatorData and SensorData (and timestamp)
 					this.lastKnownHumidifierCommand = this.latestHumidifierActuatorData.getCommand();
 					this.latestHumidifierActuatorData = null;
-					this.latestHumiditySensorData = null;
+					this.prevLatestHumiditySensorData = null;
 					this.latestHumiditySensorTimeStamp = null;
 
 				} else {
@@ -731,7 +751,7 @@ public class DeviceDataManager extends JedisPubSub implements IDataMessageListen
 
 		puetceClient.sendMessage(
 			conversation,
-			_BaseSystemPrompt,
+			_BaseSystemPrompt + generateEnvironmentPrompt(),
 			true,
 			0.5f
 		);
@@ -790,7 +810,7 @@ public class DeviceDataManager extends JedisPubSub implements IDataMessageListen
 
 						boolean success = this.puetceClient.sendMessage(
 							conversation,
-							_BaseSystemPrompt,
+							_BaseSystemPrompt + generateEnvironmentPrompt(),
 							true,
 							0.5f
 						);
@@ -808,5 +828,35 @@ public class DeviceDataManager extends JedisPubSub implements IDataMessageListen
 		} catch (JsonSyntaxException e) {
 			_Logger.warning("Failed to parse json speech data: " + e);
 		}
+	}
+
+	private String generateEnvironmentPrompt() {
+		String prompt = 
+			"{{ENVIRONMENTAL INFORMATION}}" + //
+			"You have access to sensors that sense environmental information " + //
+			"about the user's home. Note that the sensor readings may be skewed " + //
+			"(i.e. the temperature might be higher because the sensor is located " + //
+			"located on the board next to the CPU.)\n\nHere are the latest " + // 
+			"readings with their timestamps:" + //
+			
+			"\n\tTEMPERATURE (DEGREES CELSIUS) = " + this.latestTemperatureSensorData.getValue() + //
+			" (taken at " + this.latestTemperatureSensorData.getTimeStamp() + ")" + //
+			"\n\tRELATIVE HUMIDITY (PERCENT) = " + this.latestHumiditySensorData.getValue() + //
+			" (taken at " + this.latestHumiditySensorData.getTimeStamp() + ")" + //
+			"\n\tPRESSURE (MILLIBARS) = " + this.latestPressureSensorData.getValue() + //
+			" (taken at " + this.latestPressureSensorData.getTimeStamp() + ")" + //
+			
+			"\n\nNOTE: The sensor data may be outdated; make sure to compare the " + //
+			"readings' timestamps to the provided time (below) before reporting/taking " + //
+			"action." + //
+
+			"\n\n{{CURRENT DATE AND TIME INFORMATION}}\nAdditionally, here is the " + //
+			"current date and time: " + //
+			"\n\tCURRENT DATE TIME (ISO 8601) = " + LocalDateTime.now() + //
+
+			"\n\nYou may use these readings to answer the user's queries if " + //
+			"the information is relevant.";
+
+		return prompt;
 	}
 }
