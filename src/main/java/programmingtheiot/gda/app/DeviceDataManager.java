@@ -63,6 +63,18 @@ import redis.clients.jedis.JedisPubSub;
 public class DeviceDataManager extends JedisPubSub implements IDataMessageListener
 {
 	// static
+
+	private static final String _BaseSystemPrompt = 
+		"{{BASE SYSTEM PROMPT}}\n\n" + //
+		"You are generating a spoken response. Your " + //
+		"response should as concise as possible. Responses should " + //
+		"be plain text (no markdown). Your responses should be short " + //
+		"and conversational: 100 words or less. Your response should " + //
+		"contain no markdown syntax. Additionally, all of the user's " + //
+		"queries come for speech-to-text; if a query doesn't make " + //
+		"any grammatical sense, ask the user to repeat the query " + // 
+		"using this phrase:\n\t\"I didn't get that. Can you " + // 
+		"please repeat?\". \n\n";
 	
 	private static final Logger _Logger =
 		Logger.getLogger(DeviceDataManager.class.getName());
@@ -719,11 +731,7 @@ public class DeviceDataManager extends JedisPubSub implements IDataMessageListen
 
 		puetceClient.sendMessage(
 			conversation,
-			"You are generating a spoken response. Your " + //
-			"response should as concise as possible. Responses should " + //
-			"be plain text (no markdown). Your responses should be short " + //
-			"and conversational: 100 words or less. Your response should " + //
-			"contain no markdown syntax.",
+			_BaseSystemPrompt,
 			true,
 			0.5f
 		);
@@ -782,11 +790,7 @@ public class DeviceDataManager extends JedisPubSub implements IDataMessageListen
 
 						boolean success = this.puetceClient.sendMessage(
 							conversation,
-							"You are generating a spoken response. Your " + //
-							"response should as concise as possible. Responses should " + //
-							"be plain text (no markdown). Your responses should be short " + //
-							"and conversational: 100 words or less. Your response should " + //
-							"contain no markdown syntax.",
+							_BaseSystemPrompt,
 							true,
 							0.5f
 						);
