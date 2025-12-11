@@ -37,6 +37,7 @@ public class SensorData extends BaseIotData
 	public SensorData(int sensorType)
 	{
 		super();
+		this.setTypeID(sensorType);
 	}
 	
 	

@@ -190,6 +190,32 @@ public class DeviceDataManagerNoCommsTest
 	}
 	
 	/**
+	 * Test sys prompt
+	 */
+	@Test
+	public void testSysPrompt()
+	{
+		DeviceDataManager devDataMgr = new DeviceDataManager();
+		try { Thread.sleep(1000L); } catch (InterruptedException e) {}
+
+		SensorData td = new SensorData(ConfigConst.TEMP_SENSOR_TYPE);
+		td.setValue((float)21.0);
+		td.setTypeID(ConfigConst.TEMP_SENSOR_TYPE);
+		SensorData hd = new SensorData(ConfigConst.HUMIDITY_SENSOR_TYPE);
+		hd.setValue((float)35.0);
+		hd.setTypeID(ConfigConst.HUMIDITY_SENSOR_TYPE);
+		SensorData pd = new SensorData(ConfigConst.PRESSURE_SENSOR_TYPE);
+		pd.setValue((float)990.1);
+		pd.setTypeID(ConfigConst.PRESSURE_SENSOR_TYPE);
+
+		devDataMgr.handleSensorMessage(ResourceNameEnum.CDA_SENSOR_MSG_RESOURCE, td);
+		devDataMgr.handleSensorMessage(ResourceNameEnum.CDA_SENSOR_MSG_RESOURCE, hd);
+		devDataMgr.handleSensorMessage(ResourceNameEnum.CDA_SENSOR_MSG_RESOURCE, pd);
+
+		_Logger.info(devDataMgr.generateEnvironmentPrompt());
+	}
+	
+	/**
 	 * Test single message
 	 */
 	@Test

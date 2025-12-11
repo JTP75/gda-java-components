@@ -11,6 +11,8 @@
 
 package programmingtheiot.gda.app;
 
+import java.time.Duration;
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 import java.time.temporal.ChronoUnit;
@@ -830,9 +832,16 @@ public class DeviceDataManager extends JedisPubSub implements IDataMessageListen
 		}
 	}
 
-	private String generateEnvironmentPrompt() {
+	// TODO change to private
+	public String generateEnvironmentPrompt() {
+		Instant now = Instant.now();
+
+		Duration tempOffset = Duration.between(now, Instant.parse(this.latestTemperatureSensorData.getTimeStamp()));
+		Duration humiOffset = Duration.between(now, Instant.parse(this.latestHumiditySensorData.getTimeStamp()));
+		Duration presOffset = Duration.between(now, Instant.parse(this.latestPressureSensorData.getTimeStamp()));
+
 		String prompt = 
-			"{{ENVIRONMENTAL INFORMATION}}" + //
+			"{{ENVIRONMENTAL INFORMATION}}\n" + //
 			"You have access to sensors that sense environmental information " + //
 			"about the user's home. Note that the sensor readings may be skewed " + //
 			"(i.e. the temperature might be higher because the sensor is located " + //
@@ -840,23 +849,25 @@ public class DeviceDataManager extends JedisPubSub implements IDataMessageListen
 			"readings with their timestamps:" + //
 			
 			"\n\tTEMPERATURE (DEGREES CELSIUS) = " + this.latestTemperatureSensorData.getValue() + //
-			" (taken at " + this.latestTemperatureSensorData.getTimeStamp() + ")" + //
+			" (taken " + tempOffset.toMinutes() + " minutes ago)" + //
 			"\n\tRELATIVE HUMIDITY (PERCENT) = " + this.latestHumiditySensorData.getValue() + //
-			" (taken at " + this.latestHumiditySensorData.getTimeStamp() + ")" + //
+			" (taken " + humiOffset.toMinutes() + " minutes ago)" + //
 			"\n\tPRESSURE (MILLIBARS) = " + this.latestPressureSensorData.getValue() + //
-			" (taken at " + this.latestPressureSensorData.getTimeStamp() + ")" + //
+			" (taken " + presOffset.toMinutes() + " minutes ago)" + //
 			
 			"\n\nNOTE: The sensor data may be outdated; make sure to compare the " + //
 			"readings' timestamps to the provided time (below) before reporting/taking " + //
-			"action." + //
+			"action. Data within 30 minutes is acceptable and not worth mentioning." + //
 
 			"\n\n{{CURRENT DATE AND TIME INFORMATION}}\nAdditionally, here is the " + //
 			"current date and time: " + //
-			"\n\tCURRENT DATE TIME (ISO 8601) = " + LocalDateTime.now() + //
+			"\n\tCURRENT DATE TIME (ISO 8601) = " + now + //
 
 			"\n\nYou may use these readings to answer the user's queries if " + //
 			"the information is relevant.";
 
+		_Logger.info(prompt);
+		
 		return prompt;
 	}
 }
